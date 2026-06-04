@@ -4,23 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Scribe's Armorial</title>
+    <!-- React & Babel CDNs -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .medieval-font {
+            font-family: 'Cinzel', serif;
+        }
         /* Custom scrollbar style matching your design */
-        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: #020617; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        .scrollbar-thin::-webkit-scrollbar { 
+            width: 6px; 
+        }
+        .scrollbar-thin::-webkit-scrollbar-track { 
+            background: #020617; 
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb { 
+            background: #1e293b; 
+            border-radius: 3px; 
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-amber-500 selection:text-slate-950">
     <div id="root"></div>
 
     <script type="text/babel">
-        // Destructure hooks from the global React object
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
         const PALETTE_EFFECTS = [
             { id: 'shiny', name: '✨ Shiny Metal' },
@@ -73,11 +90,308 @@
             "You are naturally hyper-aware of your physical surroundings, instantly tracking movement, sounds, or changes in your environment."
         ];
 
-        const DEFAULT_TRAINING_RECORDS = [
-            { id: "seed-1", title: "Shield of the Vigilant Protector", blazon: "Gules, a lion rampant or", answers: [5, 3, 5, 4, 3, 4, 3, 4, 3, 4, 3, 4, 5, 3, 4, 3, 4, 5, 4, 4, 4, 4, 4, 5, 3, 4, 4, 5, 4, 4, 4, 5, 3, 4, 5, 3, 4, 4, 3, 5] },
-            { id: "seed-2", title: "Standard of the Mystic Sage", blazon: "Azure, three mullets argent", answers: [2, 5, 4, 2, 4, 3, 5, 5, 4, 2, 3, 5, 3, 5, 4, 4, 5, 4, 5, 5, 5, 5, 5, 3, 5, 5, 5, 3, 5, 3, 2, 4, 5, 5, 2, 5, 3, 2, 5, 3] },
-            { id: "seed-3", title: "Crest of the Meticulous Architect", blazon: "Sable, a chevron argent between three towers or", answers: [5, 4, 5, 3, 5, 4, 4, 4, 5, 3, 5, 5, 4, 3, 3, 5, 3, 4, 4, 3, 3, 3, 3, 4, 3, 4, 4, 5, 4, 4, 3, 4, 4, 4, 4, 4, 3, 2, 5, 4] }
+        const HISTORICAL_PERSONAS = [
+            { name: "Ser Alistair", title: "Iron Dragon Warden", primary: "valour", secondary: "resolve" },
+            { name: "Beatrix", title: "Citadel High Chronicler", primary: "wisdom", secondary: "resolve" },
+            { name: "Caspian", title: "Azure Sea Envoy", primary: "grace", secondary: "wisdom" },
+            { name: "Darith", title: "Mountain Anchor Wall", primary: "resolve", secondary: "valour" },
+            { name: "Elowen", title: "Grove Cottage Healer", primary: "grace", secondary: "resolve" },
+            { name: "Faelan", title: "Sylvan Veil Ranger", primary: "resolve", secondary: "wisdom" },
+            { name: "Genevieve", title: "Royal Court Orator", primary: "grace", secondary: "valour" },
+            { name: "Hadrian", title: "Imperial Architect", primary: "wisdom", secondary: "valour" },
+            { name: "Isolde", title: "Dreamweaver Weaver", primary: "grace", secondary: "wisdom" },
+            { name: "Jorund", title: "Volcanic Forge Master", primary: "resolve", secondary: "valour" },
+            { name: "Kaelen", title: "Celestial Astrologer", primary: "wisdom", secondary: "resolve" },
+            { name: "Lysandra", title: "Justiciar of the Shield", primary: "valour", secondary: "wisdom" },
+            { name: "Marek", title: "Crimson Spire Vanguard", primary: "valour", secondary: "resolve" },
+            { name: "Nesta", title: "Harp Virtuoso of Court", primary: "grace", secondary: "resolve" },
+            { name: "Orion", title: "Star Cartographer", primary: "wisdom", secondary: "resolve" },
+            { name: "Padraig", title: "Forest Warden Druid", primary: "resolve", secondary: "grace" },
+            { name: "Quentin", title: "Coin Master Scholar", primary: "wisdom", secondary: "resolve" },
+            { name: "Lady Rowena", title: "Gilded Banner Envoy", primary: "grace", secondary: "valour" },
+            { name: "Sigurd", title: "Iron Shield Leader", primary: "valour", secondary: "resolve" },
+            { name: "Talia", title: "Sanctuary Apothecary", primary: "wisdom", secondary: "grace" },
+            { name: "Brother Uther", title: "Monastic Stonecarver", primary: "resolve", secondary: "wisdom" },
+            { name: "Valerius", title: "Colosseum Gladiator King", primary: "valour", secondary: "grace" },
+            { name: "Willa", title: "Northern Navigator", primary: "resolve", secondary: "wisdom" },
+            { name: "Xander", title: "Silver-Tongued Duelist", primary: "valour", secondary: "grace" },
+            { name: "Yvaine", title: "Astral Spire Oracle", primary: "wisdom", secondary: "grace" },
+            { name: "Zephyr", title: "Wandering Troubadour", primary: "grace", secondary: "valour" },
+            { name: "Aveline", title: "Garrison Shield Guardian", primary: "resolve", secondary: "valour" },
+            { name: "Boran", title: "Grand Bronze Founder", primary: "resolve", secondary: "resolve" },
+            { name: "Clarissa", title: "Silken Tapestry Artisan", primary: "grace", secondary: "resolve" },
+            { name: "Dragan", title: "Crimson Dragon Hunter", primary: "valour", secondary: "resolve" },
+            { name: "Eldrin", title: "Ancient Spire Runescribe", primary: "wisdom", secondary: "resolve" },
+            { name: "Fiona", title: "Dawn Mediation Envoy", primary: "grace", secondary: "wisdom" },
+            { name: "Gideon", title: "Citadel Oathkeeper", primary: "resolve", secondary: "valour" },
+            { name: "Helena", title: "Royal Glassblower", primary: "grace", secondary: "resolve" },
+            { name: "Ivor", title: "Subterranean Shaft Miner", primary: "resolve", secondary: "resolve" },
+            { name: "Juliana", title: "Imperial Archivist", primary: "wisdom", secondary: "grace" },
+            { name: "Karr", title: "Borderlands Cavalry Raider", primary: "valour", secondary: "resolve" },
+            { name: "Lenore", title: "Lunar Botanist", primary: "wisdom", secondary: "resolve" },
+            { name: "Myrran", title: "Oasis Sanctuary Mediator", primary: "grace", secondary: "resolve" },
+            { name: "Nolan", title: "Masonry Bridge Engineer", primary: "resolve", secondary: "wisdom" },
+            { name: "Odelia", title: "Palace Rose Cultivator", primary: "grace", secondary: "resolve" },
+            { name: "Percival", title: "Holy Grail Quest Knight", primary: "valour", secondary: "wisdom" },
+            { name: "Rhea", title: "Wild Foothills Falconer", primary: "resolve", secondary: "valour" },
+            { name: "Soren", title: "Silent Archive Keeper", primary: "wisdom", secondary: "resolve" },
+            { name: "Theron", title: "Deep Greenwood Tracker", primary: "resolve", secondary: "wisdom" },
+            { name: "Ulrich", title: "Grand Iron Garrison Marshal", primary: "valour", secondary: "resolve" },
+            { name: "Vespera", title: "Midnight Shadow Scribe", primary: "wisdom", secondary: "resolve" },
+            { name: "Wulfgar", title: "Berserker Chief of the North", primary: "valour", secondary: "resolve" },
+            { name: "Yolanda", title: "Royal Velvet Weaver", primary: "grace", secondary: "resolve" },
+            { name: "Zarian", title: "Crown Master Gemcutter", primary: "grace", secondary: "resolve" },
+            { name: "Alaric", title: "Fortress Shield Captain", primary: "valour", secondary: "resolve" },
+            { name: "Brunhilda", title: "Northlands Valkyrie Envoy", primary: "valour", secondary: "resolve" },
+            { name: "Cedric", title: "Sovereign High Arbiter", primary: "grace", secondary: "wisdom" },
+            { name: "Dagmar", title: "Longship Navigator", primary: "resolve", secondary: "valour" },
+            { name: "Elisa", title: "Valley Healer Nun", primary: "grace", secondary: "resolve" },
+            { name: "Finneas", title: "Exchequer Ledger Clerk", primary: "wisdom", secondary: "resolve" },
+            { name: "Gisela", title: "Grand Vineyard Warden", primary: "resolve", secondary: "grace" },
+            { name: "Huxley", title: "Imperial Clockmaker", primary: "wisdom", secondary: "resolve" },
+            { name: "Inara", title: "Desert Mirage Dancer", primary: "grace", secondary: "valour" },
+            { name: "Kaelith", title: "Observatory Astronomer", primary: "wisdom", secondary: "resolve" }
         ];
+
+        const calculateAlignmentCrest = (userAnswers) => {
+            const valourQ = [3, 9, 12, 17, 29, 30, 34];
+            const wisdomQ = [0, 6, 11, 15, 18, 28, 32];
+            const graceQ  = [1, 13, 14, 16, 22, 33, 37];
+            const resolveQ = [2, 4, 8, 10, 21, 23, 27, 35, 39];
+
+            const getScore = (indices) => indices.reduce((sum, idx) => sum + userAnswers[idx], 0) / (indices.length * 5);
+
+            const sValour = getScore(valourQ);
+            const sWisdom = getScore(wisdomQ);
+            const sGrace = getScore(graceQ);
+            const sResolve = getScore(resolveQ);
+
+            const dimensions = [
+                { name: 'Valour', score: sValour, primaryColor: 'Gules', secondaryColor: 'Or', metals: ['or'], colors: ['gules', 'sable'] },
+                { name: 'Wisdom', score: sWisdom, primaryColor: 'Azure', secondaryColor: 'Purpure', metals: ['argent'], colors: ['azure', 'purpure'] },
+                { name: 'Grace', score: sGrace, primaryColor: 'Vert', secondaryColor: 'Purpure', metals: ['or'], colors: ['vert', 'purpure'] },
+                { name: 'Resolve', score: sResolve, primaryColor: 'Sable', secondaryColor: 'Argent', metals: ['argent'], colors: ['sable', 'gules'] }
+            ];
+
+            dimensions.sort((a, b) => b.score - a.score);
+            const primary = dimensions[0];
+            const secondary = dimensions[1];
+
+            const qChaos = userAnswers[4]; 
+            const qCuriosity = userAnswers[24]; 
+            const qVigilance = userAnswers[23]; 
+            const qAesthetics = userAnswers[1]; 
+            const qSolitude = userAnswers[35]; 
+            const qStructure = userAnswers[15]; 
+            const qCompetitive = userAnswers[30]; 
+            const qObserver = userAnswers[32]; 
+
+            // --- LAYER 1: THE FIELD ---
+            let field = "";
+            let fieldColor1 = primary.primaryColor;
+            let fieldColor2 = secondary.primaryColor;
+
+            if (fieldColor1 === fieldColor2) {
+                fieldColor2 = (fieldColor1 === 'Gules' || fieldColor1 === 'Sable') ? 'Argent' : 'Or';
+            }
+
+            if (qStructure === 5) {
+                const patterns = ['chequy', 'lozengy', 'paly of six', 'barry of six'];
+                const selectedPattern = patterns[Math.floor(sWisdom * 4) % patterns.length];
+                field = `${selectedPattern} ${fieldColor1.toLowerCase()} and ${primary.metals[0]}`;
+            } else if (qAesthetics === 5) {
+                const semyType = primary.name === 'Valour' ? 'semy of mullets' : primary.name === 'Wisdom' ? 'semy of stars' : primary.name === 'Grace' ? 'semy of roses' : 'semy of cross-crosslets';
+                field = `${fieldColor1.toLowerCase()} ${semyType} ${primary.metals[0]}`;
+            } else if (Math.abs(primary.score - secondary.score) < 0.08) {
+                const divisions = ['party per pale', 'party per fess', 'party per chevron', 'party per bend'];
+                const selectedDiv = divisions[Math.floor((sValour + sGrace) * 4) % divisions.length];
+                field = `${selectedDiv} ${fieldColor1.toLowerCase()} and ${fieldColor2.toLowerCase()}`;
+            } else {
+                field = fieldColor1;
+            }
+
+            // --- LAYER 2: THE ORDINARY ---
+            let ordinary = "";
+            let ordinaryLine = "";
+
+            if (qChaos === 1 || qChaos === 2) {
+                const lines = ['engrailed', 'dancetty', 'wavy', 'nebully', 'invected'];
+                ordinaryLine = " " + lines[Math.floor(sResolve * 5) % lines.length];
+            }
+
+            let ordinaryName = "";
+            if (sResolve > 0.6) {
+                ordinaryName = sResolve > 0.8 ? 'cross' : 'chevron';
+            } else if (sWisdom > 0.6) {
+                ordinaryName = 'bend';
+            } else if (sGrace > 0.6) {
+                ordinaryName = 'saltire';
+            } else if (sValour > 0.6) {
+                ordinaryName = 'fess';
+            }
+
+            let ordinaryMetal = primary.metals[0];
+            if (field.toLowerCase().includes(ordinaryMetal)) {
+                ordinaryMetal = primary.metals[0] === 'or' ? 'argent' : 'or';
+            }
+
+            if (ordinaryName) {
+                ordinary = `, a ${ordinaryName}${ordinaryLine} ${ordinaryMetal}`;
+            }
+
+            // --- LAYER 3: CHARGES ---
+            let chargeType = "";
+            if (primary.name === 'Valour') {
+                const charges = ['lion', 'eagle', 'griffin', 'falcon'];
+                chargeType = charges[Math.floor(sValour * 4) % charges.length];
+            } else if (primary.name === 'Wisdom') {
+                const charges = ['owl', 'serpent', 'book', 'mullet'];
+                chargeType = charges[Math.floor(sWisdom * 4) % charges.length];
+            } else if (primary.name === 'Grace') {
+                const charges = ['fleur-de-lys', 'rose', 'harp', 'dove'];
+                chargeType = charges[Math.floor(sGrace * 4) % charges.length];
+            } else {
+                const charges = ['tower', 'wolf', 'boar', 'key'];
+                chargeType = charges[Math.floor(sResolve * 4) % charges.length];
+            }
+
+            let chargeQuantity = "a";
+            let pluralSuffix = "";
+            if (qSolitude <= 2) {
+                chargeQuantity = "three";
+                pluralSuffix = "s";
+            }
+
+            let attitude = "";
+            if (['lion', 'wolf', 'griffin', 'boar'].includes(chargeType)) {
+                if (qCompetitive === 5) {
+                    attitude = " rampant";
+                } else if (qObserver === 5) {
+                    attitude = " statant guardant";
+                } else {
+                    attitude = " passant";
+                }
+            } else if (['eagle', 'falcon', 'dove'].includes(chargeType)) {
+                if (qCompetitive === 5) {
+                    attitude = " displayed";
+                } else {
+                    attitude = " close";
+                }
+            }
+
+            const qFreedom = userAnswers[21];
+            if (qFreedom === 5) {
+                if (['lion', 'wolf', 'griffin', 'boar'].includes(chargeType)) {
+                    attitude += " crowned";
+                } else {
+                    attitude += " winged";
+                }
+            }
+
+            let chargeMetal = primary.metals[0] === 'or' ? 'argent' : 'or';
+            if (ordinaryMetal === chargeMetal) {
+                chargeMetal = ordinaryMetal === 'or' ? 'argent' : 'or';
+            }
+            if (field.toLowerCase().includes(chargeMetal)) {
+                chargeMetal = chargeMetal === 'or' ? 'gules' : 'azure';
+            }
+
+            let chargePhrase = "";
+            if (chargeQuantity === "three") {
+                chargePhrase = `, three ${chargeType}${pluralSuffix}${attitude} ${chargeMetal}`;
+                if (ordinary) {
+                    chargePhrase = ` between three ${chargeType}${pluralSuffix}${attitude} ${chargeMetal}`;
+                }
+            } else {
+                chargePhrase = `, ${chargeQuantity} ${chargeType}${attitude} ${chargeMetal}`;
+                if (ordinary) {
+                    chargePhrase = ` overall ${chargeQuantity} ${chargeType}${attitude} ${chargeMetal}`;
+                }
+            }
+
+            // --- LAYER 4: HISTORICAL SUB-CHARGES & PERIPHERALS ---
+            let canton = "";
+            if (qCuriosity === 5) {
+                const cantonTinctures = ['ermine', 'gules', 'sable', 'or'];
+                canton = `, a canton ${cantonTinctures[Math.floor(sWisdom * 4) % cantonTinctures.length]}`;
+            }
+
+            let bordure = "";
+            if (qVigilance === 5) {
+                const bordureTincture = primary.metals[0] === 'or' ? 'argent' : 'or';
+                bordure = `, a bordure ${bordureTincture}`;
+            }
+
+            const finalBlazon = `${field}${ordinary}${chargePhrase}${canton}${bordure}`;
+
+            // Segmented dynamic descriptions
+            const fieldExplanation = `The background utilizes "${field.replace(/,/g, '')}." This spatial structure forms the base layer balancing your dominant alignment of ${primary.name.toUpperCase()} with adjacent cognitive paths.`;
+            const ordinaryExplanation = ordinary 
+                ? `A structural "${ordinaryName}" ordinary featuring a ${ordinaryLine ? ordinaryLine : 'flat'} margin cuts cleanly across the canvas, representing how you manage boundaries and structural parameters.`
+                : `Your traits bypass standard split geometric separators, choosing instead to focus all visual energy onto the core charges.`;
+            const chargeExplanation = `The shield's focal point features ${chargeQuantity} ${chargeType}${attitude} in ${chargeMetal}, expressing the direct translation of your values into actions.`;
+
+            return {
+                title: `Crest of ${primary.name} and ${secondary.name}`,
+                blazon: finalBlazon.charAt(0).toUpperCase() + finalBlazon.slice(1),
+                tinctureExplanation: fieldExplanation,
+                chargesExplanation: ordinaryExplanation,
+                overallAnalysis: chargeExplanation,
+                scores: {
+                    valour: Math.round(sValour * 100),
+                    wisdom: Math.round(sWisdom * 100),
+                    grace: Math.round(sGrace * 100),
+                    resolve: Math.round(sResolve * 100)
+                }
+            };
+        };
+
+        const generateHistoricalDatabase = () => {
+            const valourQ = [3, 9, 12, 17, 29, 30, 34];
+            const wisdomQ = [0, 6, 11, 15, 18, 28, 32];
+            const graceQ  = [1, 13, 14, 16, 22, 33, 37];
+            const resolveQ = [2, 4, 8, 10, 21, 23, 27, 35, 39];
+
+            return HISTORICAL_PERSONAS.map((p, pIdx) => {
+                const simulatedAnswers = Array(40).fill(3).map((v, qIdx) => {
+                    // Seeded random-like logic based on indices to guarantee stable profiles
+                    const seedVal = (pIdx * 7 + qIdx * 13) % 5;
+                    let baseline = 3;
+
+                    if (p.primary === "valour" && valourQ.includes(qIdx)) baseline = 4 + (seedVal % 2);
+                    else if (p.primary === "wisdom" && wisdomQ.includes(qIdx)) baseline = 4 + (seedVal % 2);
+                    else if (p.primary === "grace" && graceQ.includes(qIdx)) baseline = 4 + (seedVal % 2);
+                    else if (p.primary === "resolve" && resolveQ.includes(qIdx)) baseline = 4 + (seedVal % 2);
+
+                    if (p.secondary === "valour" && valourQ.includes(qIdx)) baseline = Math.max(baseline, 3 + (seedVal % 2));
+                    else if (p.secondary === "wisdom" && wisdomQ.includes(qIdx)) baseline = Math.max(baseline, 3 + (seedVal % 2));
+                    else if (p.secondary === "grace" && graceQ.includes(qIdx)) baseline = Math.max(baseline, 3 + (seedVal % 2));
+                    else if (p.secondary === "resolve" && resolveQ.includes(qIdx)) baseline = Math.max(baseline, 3 + (seedVal % 2));
+
+                    // Conflicting traits mapped down slightly
+                    if (p.primary === "valour" && graceQ.includes(qIdx)) baseline = Math.max(1, baseline - 2);
+                    if (p.primary === "wisdom" && valourQ.includes(qIdx)) baseline = Math.max(1, baseline - 1);
+
+                    return Math.max(1, Math.min(5, baseline));
+                });
+
+                const compiled = calculateAlignmentCrest(simulatedAnswers);
+
+                return {
+                    id: `historical-${pIdx}`,
+                    title: `${p.name}, ${p.title}`,
+                    blazon: compiled.blazon,
+                    answers: simulatedAnswers,
+                    tinctureExplanation: compiled.tinctureExplanation,
+                    chargesExplanation: compiled.chargesExplanation,
+                    overallAnalysis: compiled.overallAnalysis,
+                    scores: compiled.scores,
+                    dominant: p.primary
+                };
+            });
+        };
+
+        const SEEDED_ARCHIVES = generateHistoricalDatabase();
 
         function App() {
             const [currentMode, setCurrentMode] = useState('create'); 
@@ -88,53 +402,78 @@
             const [loadingStep, setLoadingStep] = useState('');
             const [generationResult, setGenerationResult] = useState(null);
             const [chosenEffect, setChosenEffect] = useState('shiny');
-            const [trainBlazon, setTrainBlazon] = useState('Or, a fess vert between three eagles gules');
-            const [trainTitle, setTrainTitle] = useState('Crest of the Forest Warden');
-            const [libraryData, setLibraryData] = useState(DEFAULT_TRAINING_RECORDS);
-            const [selectedLibraryItem, setSelectedLibraryItem] = useState(null);
+            const [selectedLibraryItem, setSelectedLibraryItem] = useState(SEEDED_ARCHIVES[0]);
             const [toast, setToast] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [filterTrait, setFilterTrait] = useState('all');
+
+            // Persistent LocalStorage Loader for library records
+            const [libraryData, setLibraryData] = useState(() => {
+                try {
+                    const saved = localStorage.getItem("armorial_records_v2");
+                    return saved ? JSON.parse(saved) : [];
+                } catch (e) {
+                    console.error("Local storage read failed:", e);
+                    return [];
+                }
+            });
 
             const showToast = (message) => {
                 setToast(message);
                 setTimeout(() => setToast(null), 4000);
             };
 
-            const handleTrainSubmission = () => {
-                if (!trainBlazon.trim() || !trainTitle.trim()) {
-                    showToast("⚠️ Please provide both a Title and a valid Blazon code.");
-                    return;
-                }
+            const generateBlazonFromAnswers = () => {
+                setLoading(true);
+                setLoadingStep("Processing alignments through geometric matrices...");
+                
+                setTimeout(() => {
+                    const localCrest = calculateAlignmentCrest(answers);
+                    setGenerationResult(localCrest);
+                    setCurrentStep('result');
+                    setLoading(false);
+                    showToast("🏰 Local Scribe engine has aligned and rendered your crest!");
+                }, 1200);
+            };
+
+            const handleSaveCurrentCrest = () => {
+                if (!generationResult) return;
                 const payload = {
                     id: 'custom-' + Date.now(),
-                    title: trainTitle.trim(),
-                    blazon: trainBlazon.trim(),
-                    answers: answers
+                    title: generationResult.title,
+                    blazon: generationResult.blazon,
+                    answers: [...answers],
+                    tinctureExplanation: generationResult.tinctureExplanation,
+                    chargesExplanation: generationResult.chargesExplanation,
+                    overallAnalysis: generationResult.overallAnalysis,
+                    scores: generationResult.scores,
+                    dominant: 'custom'
                 };
-                setLibraryData(prev => [payload, ...prev]);
-                showToast("📝 Saved locally for current session (Sandbox Mode).");
+                const updatedRecords = [payload, ...libraryData];
+                setLibraryData(updatedRecords);
+                localStorage.setItem("armorial_records_v2", JSON.stringify(updatedRecords));
+                showToast("🏰 Saved this coat of arms to your Hall of Records!");
+                setSelectedLibraryItem(payload);
                 setCurrentMode('library');
             };
 
-            const generateBlazonFromAnswers = () => {
-                setLoading(true);
-                setLoadingStep("Synthesizing your personality spectrum...");
-                
-                // Simulated AI local forging mechanism for iframe sandboxes
-                setTimeout(() => {
-                    setGenerationResult({
-                        title: "The Unyielding Sovereign",
-                        blazon: "Per pale gules and azure, a lion rampant crowned or",
-                        tinctureExplanation: "Gules (red) for your courage under pressure. Azure (blue) representing your fidelity to truth.",
-                        chargesExplanation: "A lion rampant crowned with gold represents absolute resilience and leadership.",
-                        overallAnalysis: "Your steadfast answers speak of a majestic and sovereign character."
-                    });
-                    setCurrentStep('result');
-                    setLoading(false);
-                }, 1500);
+            const handleDeleteCrest = (id) => {
+                const filtered = libraryData.filter(item => item.id !== id);
+                setLibraryData(filtered);
+                localStorage.setItem("armorial_records_v2", JSON.stringify(filtered));
+                showToast("🗑️ Record cleared from archive.");
+                if (selectedLibraryItem && selectedLibraryItem.id === id) {
+                    setSelectedLibraryItem(SEEDED_ARCHIVES[0]);
+                }
             };
 
             const handleCopyBlazon = (blazonText) => {
-                navigator.clipboard.writeText(blazonText);
+                const dummy = document.createElement("textarea");
+                document.body.appendChild(dummy);
+                dummy.value = blazonText;
+                dummy.select();
+                document.execCommand('copy');
+                document.body.removeChild(dummy);
                 showToast("📋 Blazon syntax copied! Paste it into Drawshield.");
             };
 
@@ -148,112 +487,418 @@
                 return `https://drawshield.net/include/drawshield.php?blazon=${encodeURIComponent(blazon.replace(/[#?;%]/g, ''))}&outputformat=png&size=400&effect=${style}`;
             };
 
+            const combinedDatabase = useMemo(() => {
+                return [...libraryData, ...SEEDED_ARCHIVES];
+            }, [libraryData]);
+
+            const filteredDatabase = useMemo(() => {
+                return combinedDatabase.filter(item => {
+                    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                          item.blazon.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchesFilter = filterTrait === 'all' || item.dominant === filterTrait;
+                    return matchesSearch && matchesFilter;
+                });
+            }, [combinedDatabase, searchTerm, filterTrait]);
+
             return (
                 <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
                     <div className="h-2 bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600 w-full shadow-lg"></div>
-                    <div className="bg-slate-900 border-b border-slate-800 text-xs text-slate-400 px-4 py-2 flex justify-between items-center">
+                    
+                    <div className="bg-slate-900 border-b border-slate-800 text-xs text-slate-400 px-4 py-2.5 flex justify-between items-center gap-2 flex-wrap">
                         <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                            <span>Local Sandbox Architecture</span>
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>Procedural Blazon Engine Active (Dynamic Layer Synthesizer)</span>
                         </div>
-                        <div className="text-amber-500 font-serif tracking-wider uppercase text-[10px]">
-                            Library: <strong className="text-white">{libraryData.length} Scrolls</strong> Active
+                        <div className="text-amber-500 medieval-font tracking-wider uppercase text-[10px]">
+                            Total Records: <strong className="text-white">{combinedDatabase.length} Scrolls</strong> Inscribed
                         </div>
                     </div>
 
                     <header className="py-8 px-4 text-center max-w-4xl mx-auto w-full">
-                        <h1 className="text-4xl md:text-5xl font-extrabold font-serif text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-200 to-amber-400">
+                        <h1 className="text-4xl md:text-5xl font-black medieval-font text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-200 to-amber-400 mb-2 drop-shadow-md">
                             The Scribe's Armorial
                         </h1>
-                        <nav className="mt-6 flex justify-center gap-2 max-w-md mx-auto bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-                            <button onClick={() => { setCurrentMode('create'); setCurrentStep('intro'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs md:text-sm font-medium ${currentMode === 'create' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'}`}>🛡️ Create</button>
-                            <button onClick={() => { setCurrentMode('train'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs md:text-sm font-medium ${currentMode === 'train' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'}`}>🏰 Train</button>
-                            <button onClick={() => { setCurrentMode('library'); setSelectedLibraryItem(null); }} className={`flex-1 py-2 px-3 rounded-lg text-xs md:text-sm font-medium ${currentMode === 'library' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'}`}>📖 Records</button>
+                        <p className="text-slate-400 max-w-lg mx-auto text-xs md:text-sm">
+                            An interactive pattern engine mapping the 40 realms of human psyche into majestic coats of arms for DrawShield.net
+                        </p>
+                        <nav className="mt-6 flex justify-center gap-2 max-w-xs mx-auto bg-slate-900 p-1.5 rounded-xl border border-slate-800 shadow-xl">
+                            <button onClick={() => { setCurrentMode('create'); setCurrentStep('intro'); }} className={`flex-1 py-2 px-4 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${currentMode === 'create' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}>🛡️ Create Crest</button>
+                            <button onClick={() => { setCurrentMode('library'); }} className={`flex-1 py-2 px-4 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${currentMode === 'library' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'}`}>📖 Hall of Records</button>
                         </nav>
                     </header>
 
-                    <main className="flex-grow max-w-5xl w-full mx-auto px-4 pb-16">
+                    <main className="flex-grow max-w-6xl w-full mx-auto px-4 pb-16">
                         {loading && (
-                            <div className="fixed inset-0 bg-slate-950/90 z-50 flex flex-col items-center justify-center p-6">
+                            <div className="fixed inset-0 bg-slate-950/90 z-50 flex flex-col items-center justify-center p-6 backdrop-blur-sm">
                                 <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                <h3 className="text-xl font-serif text-amber-400 animate-pulse">{loadingStep}</h3>
+                                <h3 className="text-xl medieval-font text-amber-400 animate-pulse text-center">{loadingStep}</h3>
                             </div>
                         )}
 
+                        {/* MODE A: CREATION MODE */}
                         {currentMode === 'create' && (
                             <div>
                                 {currentStep === 'intro' && (
-                                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl max-w-2xl mx-auto text-center shadow-xl">
-                                        <h2 className="text-2xl font-serif font-bold text-amber-400 mb-4">Forge Your Heraldic Alignment</h2>
-                                        <p className="text-slate-300 text-sm mb-6">Align your psychological profile features directly into modular shield layouts.</p>
-                                        <button onClick={() => setCurrentStep('quiz')} className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold px-8 py-3.5 rounded-xl text-sm">Begin Attunement</button>
+                                    <div className="bg-slate-900/60 border border-slate-800 p-8 rounded-2xl max-w-2xl mx-auto text-center shadow-xl backdrop-blur">
+                                        <span className="text-5xl mb-4 block">🔮</span>
+                                        <h2 className="text-2xl medieval-font font-bold text-amber-400 mb-4">Forge Your Heraldic Alignment</h2>
+                                        <p className="text-slate-300 text-sm leading-relaxed mb-6 font-sans">
+                                            Embark on a forty-tier psychological test designed to align your intrinsic traits with classic heraldic structures. Our machine pattern engine matches your virtues, social mechanics, and environmental preferences with medieval shield divisions.
+                                        </p>
+                                        <button onClick={() => setCurrentStep('quiz')} className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold px-8 py-3.5 rounded-xl text-sm hover:brightness-110 shadow-lg shadow-amber-500/10">Begin Attunement</button>
                                     </div>
                                 )}
 
                                 {currentStep === 'quiz' && (
-                                    <div className="bg-slate-900 border border-slate-800 p-6 md:p-10 rounded-2xl max-w-3xl mx-auto shadow-2xl">
+                                    <div className="bg-slate-900 border border-slate-800 p-6 md:p-10 rounded-2xl max-w-3xl mx-auto shadow-2xl relative overflow-hidden">
                                         <div className="flex justify-between items-center mb-6">
-                                            <button onClick={handleQuickAutofill} className="text-[10px] bg-slate-800 text-amber-400 px-2 py-1 rounded">⚡ Fast Skip</button>
-                                            <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full">Query {currentQuestionIdx + 1} of 40</span>
+                                            <button onClick={handleQuickAutofill} className="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-amber-400 px-3 py-1.5 rounded transition-colors font-mono">⚡ Fast Skip</button>
+                                            <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full font-mono">Query {currentQuestionIdx + 1} of 40</span>
                                         </div>
-                                        <div className="min-h-[120px] bg-slate-950/40 p-6 rounded-xl border border-slate-800/40 mb-8 text-center text-lg font-serif">"{QUESTIONS[currentQuestionIdx]}"</div>
+                                        
+                                        <div className="w-full bg-slate-950 rounded-full h-1.5 mb-8 border border-slate-800 overflow-hidden">
+                                            <div className="bg-gradient-to-r from-amber-600 to-yellow-400 h-1.5 transition-all duration-300" style={{ width: `${((currentQuestionIdx + 1) / 40) * 100}%` }}></div>
+                                        </div>
+
+                                        <div className="min-h-[120px] bg-slate-950/40 p-6 rounded-xl border border-slate-800/40 mb-8 flex items-center justify-center text-center text-lg font-serif italic text-slate-200 leading-relaxed">
+                                            "{QUESTIONS[currentQuestionIdx]}"
+                                        </div>
+                                        
                                         <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-8">
-                                            {[1, 2, 3, 4, 5].map((val) => (
-                                                <button key={val} onClick={() => { const u = [...answers]; u[currentQuestionIdx] = val; setAnswers(u); }} className={`p-4 rounded-xl border font-bold text-center ${answers[currentQuestionIdx] === val ? 'bg-amber-500 text-slate-950' : 'bg-slate-950 border-slate-800'}`}>{val}</button>
+                                            {[
+                                                { val: 1, label: "Strongly Disagree" },
+                                                { val: 2, label: "Disagree" },
+                                                { val: 3, label: "Neutral / Unsure" },
+                                                { val: 4, label: "Agree" },
+                                                { val: 5, label: "Strongly Agree" }
+                                            ].map((opt) => (
+                                                <button 
+                                                    key={opt.val} 
+                                                    onClick={() => { 
+                                                        const u = [...answers]; 
+                                                        u[currentQuestionIdx] = opt.val; 
+                                                        setAnswers(u); 
+                                                    }} 
+                                                    className={`p-3 rounded-xl border font-bold text-center flex flex-col justify-center items-center transition-all ${
+                                                        answers[currentQuestionIdx] === opt.val 
+                                                            ? 'bg-amber-500 border-amber-400 text-slate-950 scale-105 shadow-md shadow-amber-500/20' 
+                                                            : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-400'
+                                                    }`}
+                                                >
+                                                    <span className="text-lg mb-0.5 font-mono">{opt.val}</span>
+                                                    <span className="text-[9px] leading-tight opacity-85 font-sans">{opt.label}</span>
+                                                </button>
                                             ))}
                                         </div>
-                                        <div className="flex justify-between">
-                                            <button disabled={currentQuestionIdx === 0} onClick={() => setCurrentQuestionIdx(p => p - 1)} className="px-4 py-2 bg-slate-800 text-xs rounded disabled:opacity-30">← Previous</button>
+                                        <div className="flex justify-between items-center font-sans">
+                                            <button disabled={currentQuestionIdx === 0} onClick={() => setCurrentQuestionIdx(p => p - 1)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700/60 rounded disabled:opacity-30">← Previous</button>
                                             {currentQuestionIdx < 39 ? (
-                                                <button onClick={() => setCurrentQuestionIdx(p => p + 1)} className="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded">Next →</button>
+                                                <button onClick={() => setCurrentQuestionIdx(p => p + 1)} className="px-6 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded">Next →</button>
                                             ) : (
-                                                <button onClick={generateBlazonFromAnswers} className="px-6 py-2 bg-emerald-500 text-slate-950 text-xs font-black rounded">⚔️ Forge Shield</button>
+                                                <button onClick={generateBlazonFromAnswers} className="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded animate-pulse">⚔️ Forge Shield</button>
                                             )}
                                         </div>
                                     </div>
                                 )}
 
                                 {currentStep === 'result' && generationResult && (
-                                    <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl max-w-2xl mx-auto text-center space-y-6">
-                                        <h2 className="text-2xl font-serif font-black text-amber-400">{generationResult.title}</h2>
-                                        <div className="flex justify-center">
-                                            <img src={getDrawshieldUrl(generationResult.blazon, chosenEffect)} className="w-64 h-64 bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-inner" />
+                                    <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl max-w-4xl mx-auto shadow-2xl relative">
+                                        <div className="text-center mb-6">
+                                            <span className="text-xs uppercase tracking-widest text-amber-500 font-mono">Attunement Complete</span>
+                                            <h2 className="text-2xl md:text-3xl font-bold medieval-font text-slate-100">{generationResult.title}</h2>
                                         </div>
-                                        <p className="text-sm font-mono text-amber-300 bg-slate-950 p-3 rounded border border-slate-800">{generationResult.blazon}</p>
-                                        <div className="flex gap-2 justify-center">
-                                            <button onClick={() => handleCopyBlazon(generationResult.blazon)} className="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-lg">📋 Copy Syntax</button>
-                                            <button onClick={() => { setAnswers(Array(40).fill(3)); setCurrentQuestionIdx(0); setCurrentStep('quiz'); }} className="px-4 py-2 bg-slate-800 text-xs rounded-lg">🔄 Restart</button>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start font-sans">
+                                            <div className="bg-slate-950 p-6 rounded-xl border border-slate-800/80 flex flex-col items-center">
+                                                <div className="w-full max-w-[260px] aspect-square relative rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center border border-slate-800">
+                                                    <img 
+                                                        src={getDrawshieldUrl(generationResult.blazon, chosenEffect)} 
+                                                        className="w-full h-full object-contain p-2" 
+                                                        alt="Rendered Crest"
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = `https://placehold.co/400x400/18181b/ffffff?text=Generating+Shield+...`;
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="mt-6 w-full">
+                                                    <label className="text-[10px] text-slate-500 font-mono uppercase tracking-widest block mb-2 text-center">Visual Rendering Aesthetic</label>
+                                                    <div className="grid grid-cols-2 gap-1.5 font-sans">
+                                                        {PALETTE_EFFECTS.map((eff) => (
+                                                            <button
+                                                                key={eff.id}
+                                                                onClick={() => setChosenEffect(eff.id)}
+                                                                className={`py-1.5 px-2 rounded text-[10px] transition-colors border ${
+                                                                    chosenEffect === eff.id
+                                                                        ? 'bg-amber-500/10 border-amber-400 text-amber-300'
+                                                                        : 'bg-slate-900/60 border-transparent text-slate-400 hover:text-slate-200'
+                                                                }`}
+                                                            >
+                                                                {eff.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 font-sans">
+                                                    <label className="text-[10px] text-slate-500 font-mono block mb-1">Drawshield Blazon Code</label>
+                                                    <p className="text-amber-300 font-mono text-xs break-all leading-relaxed p-2.5 bg-slate-900 rounded border border-slate-800/50 mb-3 select-all">{generationResult.blazon}</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button onClick={() => handleCopyBlazon(generationResult.blazon)} className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 font-sans">📋 Copy Code</button>
+                                                        <button onClick={handleSaveCurrentCrest} className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 font-sans">💾 Save to Archives</button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-3 text-sm font-sans">
+                                                    <div className="border-l-2 border-amber-500/40 pl-3">
+                                                        <h4 className="medieval-font font-bold text-slate-300 text-xs uppercase tracking-wider mb-0.5">Background Structure</h4>
+                                                        <p className="text-slate-400 text-xs leading-relaxed">{generationResult.tinctureExplanation}</p>
+                                                    </div>
+                                                    <div className="border-l-2 border-amber-500/40 pl-3">
+                                                        <h4 className="medieval-font font-bold text-slate-300 text-xs uppercase tracking-wider mb-0.5">Partition & Boundary Borders</h4>
+                                                        <p className="text-slate-400 text-xs leading-relaxed">{generationResult.chargesExplanation}</p>
+                                                    </div>
+                                                    <div className="border-l-2 border-amber-500/40 pl-3">
+                                                        <h4 className="medieval-font font-bold text-slate-300 text-xs uppercase tracking-wider mb-0.5">Central Charge Element</h4>
+                                                        <p className="text-slate-400 text-xs leading-relaxed">{generationResult.overallAnalysis}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-8 pt-6 border-t border-slate-800 flex justify-center font-sans">
+                                            <button onClick={() => { setAnswers(Array(40).fill(3)); setCurrentQuestionIdx(0); setCurrentStep('quiz'); }} className="py-2 px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700/60 transition-colors">🔄 Restart Attunement</button>
                                         </div>
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {currentMode === 'train' && (
-                            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-2xl mx-auto space-y-4">
-                                <h2 className="text-lg font-serif font-bold text-amber-400">Sigils Registry Matrix</h2>
-                                <input type="text" value={trainTitle} onChange={(e) => setTrainTitle(e.target.value)} placeholder="Crest Title" className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs" />
-                                <input type="text" value={trainBlazon} onChange={(e) => setTrainBlazon(e.target.value)} placeholder="Blazon Code" className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs font-mono text-amber-300" />
-                                <button onClick={handleTrainSubmission} className="w-full py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded">Inscribe Pattern</button>
-                            </div>
-                        )}
-
+                        {/* MODE B: HALL OF RECORDS (EXTENDED LIBRARY) */}
                         {currentMode === 'library' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
-                                {libraryData.map(item => (
-                                    <div key={item.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center gap-4">
-                                        <img src={getDrawshieldUrl(item.blazon, 'shiny')} className="w-12 h-12 bg-slate-950 rounded p-1 border border-slate-800" />
-                                        <div>
-                                            <h4 className="font-serif font-bold text-xs text-slate-200">{item.title}</h4>
-                                            <p className="text-[10px] font-mono text-slate-500 truncate max-w-[180px]">{item.blazon}</p>
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 font-sans">
+                                
+                                {/* LEFT PANEL: BROWSER, FILTER & SEARCH */}
+                                <div className="lg:col-span-5 space-y-4">
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md">
+                                        <h3 className="text-sm font-semibold text-slate-200 mb-3 uppercase tracking-wider medieval-font">Record Filters</h3>
+                                        <div className="relative mb-3">
+                                            <input 
+                                                type="text" 
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                placeholder="Search scrolls by title or blazon..."
+                                                className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2.5 text-xs text-slate-200 placeholder:text-slate-600 font-sans"
+                                            />
+                                            {searchTerm && (
+                                                <button onClick={() => setSearchTerm('')} className="absolute right-3 top-2.5 text-xs text-slate-500 hover:text-slate-200">✕</button>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="flex flex-wrap gap-1">
+                                            {[
+                                                { id: 'all', label: 'All Scrolls' },
+                                                { id: 'valour', label: '🔥 Valour' },
+                                                { id: 'wisdom', label: '🌊 Wisdom' },
+                                                { id: 'grace', label: '🌿 Grace' },
+                                                { id: 'resolve', label: '🛡️ Resolve' },
+                                                { id: 'custom', label: '✨ Saved' }
+                                            ].map(t => (
+                                                <button
+                                                    key={t.id}
+                                                    onClick={() => setFilterTrait(t.id)}
+                                                    className={`py-1 px-2.5 rounded-md text-[10px] font-semibold transition-colors ${
+                                                        filterTrait === t.id 
+                                                            ? 'bg-amber-500 text-slate-950' 
+                                                            : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                                                    }`}
+                                                >
+                                                    {t.label}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
-                                ))}
+
+                                    {/* SCROLL CARDS GRID */}
+                                    <div className="max-h-[580px] overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-slate-800">
+                                        {filteredDatabase.length > 0 ? (
+                                            filteredDatabase.map(item => {
+                                                const isSelected = selectedLibraryItem && selectedLibraryItem.id === item.id;
+                                                return (
+                                                    <div 
+                                                        key={item.id}
+                                                        onClick={() => setSelectedLibraryItem(item)}
+                                                        className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 relative overflow-hidden group ${
+                                                            isSelected 
+                                                                ? 'bg-slate-900 border-amber-500 shadow-md shadow-amber-500/5' 
+                                                                : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
+                                                        }`}
+                                                    >
+                                                        <div className="w-10 h-10 bg-slate-950 rounded border border-slate-800 flex-shrink-0 flex items-center justify-center p-0.5 group-hover:border-amber-500/20">
+                                                            <img 
+                                                                src={getDrawshieldUrl(item.blazon, 'shiny')} 
+                                                                className="w-full h-full object-contain" 
+                                                                alt={item.title}
+                                                                onError={(e) => {
+                                                                    e.target.onerror = null;
+                                                                    e.target.src = `https://placehold.co/100x100/18181b/ffffff?text=Shield`;
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <h4 className={`text-xs font-bold truncate transition-colors ${isSelected ? 'text-amber-400' : 'text-slate-200 group-hover:text-amber-500'}`}>
+                                                                {item.title}
+                                                            </h4>
+                                                            <p className="text-[9px] font-mono text-slate-500 truncate mt-0.5">{item.blazon}</p>
+                                                        </div>
+                                                        <span className={`text-[8px] uppercase tracking-wider font-mono font-bold px-1.5 py-0.5 rounded ${
+                                                            item.dominant === 'valour' ? 'bg-red-950 text-red-400 border border-red-900/25' :
+                                                            item.dominant === 'wisdom' ? 'bg-sky-950 text-sky-400 border border-sky-900/25' :
+                                                            item.dominant === 'grace' ? 'bg-emerald-950 text-emerald-400 border border-emerald-900/25' :
+                                                            item.dominant === 'resolve' ? 'bg-slate-950 text-slate-400 border border-slate-800' :
+                                                            'bg-amber-950 text-amber-400 border border-amber-900/25'
+                                                        }`}>
+                                                            {item.dominant}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="p-8 text-center text-slate-600 text-xs font-serif italic border border-dashed border-slate-900 rounded-xl">
+                                                No historical scrolls match your criteria.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* RIGHT PANEL: SELECTED ITEM ANALYSIS */}
+                                <div className="lg:col-span-7">
+                                    {selectedLibraryItem ? (
+                                        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-6">
+                                            
+                                            {/* HEADER METRICS */}
+                                            <div className="flex justify-between items-start border-b border-slate-800 pb-4 flex-wrap gap-2">
+                                                <div>
+                                                    <span className="text-[10px] font-mono text-amber-500 uppercase tracking-widest block font-sans">Historical Armory Register</span>
+                                                    <h3 className="text-xl font-bold medieval-font text-slate-100">{selectedLibraryItem.title}</h3>
+                                                </div>
+                                                {selectedLibraryItem.dominant === 'custom' && (
+                                                    <button 
+                                                        onClick={() => handleDeleteCrest(selectedLibraryItem.id)}
+                                                        className="py-1 px-2.5 bg-red-950/40 border border-red-900/40 hover:bg-red-900 hover:text-white text-red-400 text-[10px] rounded font-bold transition-all"
+                                                    >
+                                                        Clear Saved Record
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* PREVIEW IMAGE & BLAZON */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex flex-col items-center">
+                                                    <div className="w-full max-w-[180px] aspect-square relative rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center border border-slate-800">
+                                                        <img 
+                                                            src={getDrawshieldUrl(selectedLibraryItem.blazon, chosenEffect)} 
+                                                            className="w-full h-full object-contain p-2" 
+                                                            alt={selectedLibraryItem.title}
+                                                        />
+                                                    </div>
+                                                    <div className="mt-4 w-full">
+                                                        <div className="grid grid-cols-3 gap-1">
+                                                            {['shiny', 'stone', 'vellum'].map((eff) => (
+                                                                <button
+                                                                    key={eff}
+                                                                    onClick={() => setChosenEffect(eff)}
+                                                                    className={`py-1 rounded text-[9px] capitalize font-medium border ${
+                                                                        chosenEffect === eff
+                                                                            ? 'bg-amber-500/10 border-amber-400 text-amber-300'
+                                                                            : 'bg-slate-900/60 border-transparent text-slate-500 hover:text-slate-300'
+                                                                    }`}
+                                                                >
+                                                                    {eff}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 font-sans">
+                                                        <label className="text-[10px] text-slate-500 font-mono block mb-1">Blazon Syntax</label>
+                                                        <p className="text-amber-300 font-mono text-[11px] break-all mb-2 leading-relaxed select-all">{selectedLibraryItem.blazon}</p>
+                                                        <button 
+                                                            onClick={() => handleCopyBlazon(selectedLibraryItem.blazon)} 
+                                                            className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] rounded font-bold border border-slate-700/60 transition-colors"
+                                                        >
+                                                            📋 Copy Blazon Syntax
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    {/* SCORE BOARD */}
+                                                    {selectedLibraryItem.scores && (
+                                                        <div className="bg-slate-950/60 border border-slate-800/60 p-3 rounded-lg space-y-2">
+                                                            <h4 className="text-[10px] uppercase font-mono text-slate-400 mb-1">Psychological Dimensions</h4>
+                                                            
+                                                            {[
+                                                                { key: 'valour', label: '🔥 Valour & Command', color: 'bg-red-500' },
+                                                                { key: 'wisdom', label: '🌊 Wisdom & Systemics', color: 'bg-sky-500' },
+                                                                { key: 'grace', label: '🌿 Grace & Connection', color: 'bg-emerald-500' },
+                                                                { key: 'resolve', label: '🛡️ Resolve & Guard', color: 'bg-slate-400' }
+                                                            ].map(score => (
+                                                                <div key={score.key} className="text-[10px]">
+                                                                    <div className="flex justify-between text-slate-400 font-mono mb-0.5">
+                                                                        <span>{score.label}</span>
+                                                                        <span>{selectedLibraryItem.scores[score.key]}%</span>
+                                                                    </div>
+                                                                    <div className="w-full bg-slate-900 h-1 rounded-full overflow-hidden border border-slate-800/40">
+                                                                        <div className={`${score.color} h-1 transition-all duration-300`} style={{ width: `${selectedLibraryItem.scores[score.key]}%` }}></div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* SEGMENTED LOGIC EXPLANATIONS */}
+                                            <div className="space-y-3.5 border-t border-slate-800 pt-4 font-sans text-xs">
+                                                <div className="border-l-2 border-amber-500/40 pl-3">
+                                                    <h4 className="medieval-font font-bold text-slate-300 text-[10px] uppercase tracking-wider mb-0.5">Field Layout Pattern</h4>
+                                                    <p className="text-slate-400 leading-relaxed text-[11px]">{selectedLibraryItem.tinctureExplanation}</p>
+                                                </div>
+                                                <div className="border-l-2 border-amber-500/40 pl-3">
+                                                    <h4 className="medieval-font font-bold text-slate-300 text-[10px] uppercase tracking-wider mb-0.5">Boundary Separation</h4>
+                                                    <p className="text-slate-400 leading-relaxed text-[11px]">{selectedLibraryItem.chargesExplanation}</p>
+                                                </div>
+                                                <div className="border-l-2 border-amber-500/40 pl-3">
+                                                    <h4 className="medieval-font font-bold text-slate-300 text-[10px] uppercase tracking-wider mb-0.5">Primary Charge Symbol</h4>
+                                                    <p className="text-slate-400 leading-relaxed text-[11px]">{selectedLibraryItem.overallAnalysis}</p>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    ) : (
+                                        <div className="h-full flex items-center justify-center p-8 text-center text-slate-500 text-sm font-serif italic border border-dashed border-slate-800 rounded-2xl bg-slate-900/20">
+                                            Select a historical scroll from the catalog to inspect its full character alignment parameters.
+                                        </div>
+                                    )}
+                                </div>
+
                             </div>
                         )}
                     </main>
 
-                    {toast && <div className="fixed bottom-6 right-6 bg-slate-900 border border-amber-500/40 text-slate-200 px-4 py-2 rounded-xl text-xs shadow-2xl">🛡️ {toast}</div>}
+                    <footer className="mt-auto py-8 bg-slate-950 border-t border-slate-900 text-center text-slate-600 text-xs">
+                        <div className="max-w-4xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 font-sans">
+                            <p>© 2026 Scribe's Armorial. Compatible with DrawShield blazon parsers.</p>
+                            <div className="flex gap-4">
+                                <a href="https://drawshield.net/" target="_blank" rel="noreferrer" className="hover:text-amber-500 transition-colors">Drawshield Website</a>
+                                <span className="text-slate-800">|</span>
+                                <span className="text-slate-500">Procedural Matrix Compilation</span>
+                            </div>
+                        </div>
+                    </footer>
                 </div>
             );
         }
