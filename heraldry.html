@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Scribe's Armorial</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar style matching your design */
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #020617; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Destructure hooks from the global React object
+        const { useState, useEffect } = React;
+
+        const PALETTE_EFFECTS = [
+            { id: 'shiny', name: '✨ Shiny Metal' },
+            { id: 'stone', name: '🪨 Carved Stone' },
+            { id: 'plaster', name: '🧱 Ancient Plaster' },
+            { id: 'vellum', name: '📜 Old Vellum' },
+            { id: 'plain', name: '🎨 Classic Flat' }
+        ];
+
+        const QUESTIONS = [
+            "When a close friend is upset, your natural instinct is to offer a practical, step-by-step solution rather than just emotional validation.",
+            "You find yourself highly affected by the visual aesthetics, lighting, or cleanliness of the room you are sitting in.",
+            "If a cashier accidentally gives you five dollars too much in change, you would feel genuinely uncomfortable keeping it and would return it.",
+            "You feel more energized after a lively, deep conversation with a group of people than after a quiet evening alone with a book or movie.",
+            "Your desk, digital files, or living spaces are meticulously organized; chaos in your environment stresses you out.",
+            "You rarely feel intense anxiety or worry about worst-case scenarios; you tend to trust that things will work out.",
+            "You are deeply fascinated by abstract theories, philosophy, or complex systemic concepts that don't have an immediate practical application.",
+            "If someone cuts you off in traffic or treats you unfairly, you find it easy to let go of the anger quickly.",
+            "You prefer a predictable routine over a spontaneous, last-minute change of plans, even if the change sounds fun.",
+            "You care deeply about personal recognition and title, and you enjoy being the center of attention when you succeed.",
+            "You find immense satisfaction in working with your hands, building physical objects, or fixing mechanical things.",
+            "When faced with a new statement or \"fact,\" your default mode is to research the data and verify the evidence yourself.",
+            "You would gladly take on the role of organizing, leading, and managing a large group project to ensure it succeeds.",
+            "Expressing yourself creatively—through music, art, writing, or design—is an essential daily need for you, not just a casual hobby.",
+            "You are the person your friends always turn to when they need a mediator, an empathetic listener, or help navigating a conflict.",
+            "You genuinely love working with data, spreadsheets, mathematical patterns, or highly structured schedules.",
+            "You frequently experience a deep sense of awe and gratitude when looking at a sunset, listening to great music, or seeing a brilliant idea come together.",
+            "You are highly driven by a sense of justice; you cannot stand by quietly if you see someone being treated unfairly.",
+            "You place a massive value on lifelong learning, constantly diving down rabbit holes to master new, random skills.",
+            "Forgiveness comes easily to you; you believe holding onto a grudge is a waste of your personal mental energy.",
+            "You often feel a deep longing for \"something more\" or a sense that your current environment is too small for your ultimate potential.",
+            "You value your personal freedom and independence far more than fitting into traditional expectations or societal norms.",
+            "You have a habit of looking past people's flaws or rough interiors to find the hidden good or potential inside them.",
+            "You are highly protective of your family or community, and you would gladly make major personal sacrifices to keep them safe.",
+            "Curiosity gets the best of you; if a door says \"Do Not Enter,\" it makes you want to open it even more.",
+            "You rely heavily on your quick wit, sharp mind, and resourcefulness to get yourself out of tough or unexpected situations.",
+            "You love daydreaming about the future and planning big, ambitious goals, sometimes missing what is happening right in front of you.",
+            "You believe that rules and traditions exist for a good reason, and you find comfort in honoring duty and heritage.",
+            "You are naturally highly observant, often noticing the subtle emotional shifts or hidden details in a room that everyone else misses.",
+            "You speak your mind directly and honestly, even if it risks making waves or making people uncomfortable.",
+            "You thrive in high-stakes, fast-paced situations and love the thrill of competition or taking a bold risk.",
+            "You view yourself as a steady, reliable anchor for the people around you—calm, grounded, and fiercely protective.",
+            "You prefer to observe quietly from the perimeter before jumping into a social situation or making a big decision.",
+            "Harmonious, cooperative group dynamics matter more to you than individual victory or being \"right.\"",
+            "When a massive problem hits, your immediate instinct is to charge directly at it and tackle it head-on, rather than strategizing from afar.",
+            "You have a very high tolerance for solitude; you can spend days alone working on a project without feeling lonely.",
+            "You are incredibly adaptive; you can easily blend into completely different social circles or quickly pivot when your environment changes.",
+            "You are highly expressive with your body language, voice, or facial expressions—people can usually read exactly what you are thinking.",
+            "You prefer to specialize deeply in one specific domain or skill rather than being a \"jack-of-all-trades\" who knows a little bit of everything.",
+            "You are naturally hyper-aware of your physical surroundings, instantly tracking movement, sounds, or changes in your environment."
+        ];
+
+        const DEFAULT_TRAINING_RECORDS = [
+            { id: "seed-1", title: "Shield of the Vigilant Protector", blazon: "Gules, a lion rampant or", answers: [5, 3, 5, 4, 3, 4, 3, 4, 3, 4, 3, 4, 5, 3, 4, 3, 4, 5, 4, 4, 4, 4, 4, 5, 3, 4, 4, 5, 4, 4, 4, 5, 3, 4, 5, 3, 4, 4, 3, 5] },
+            { id: "seed-2", title: "Standard of the Mystic Sage", blazon: "Azure, three mullets argent", answers: [2, 5, 4, 2, 4, 3, 5, 5, 4, 2, 3, 5, 3, 5, 4, 4, 5, 4, 5, 5, 5, 5, 5, 3, 5, 5, 5, 3, 5, 3, 2, 4, 5, 5, 2, 5, 3, 2, 5, 3] },
+            { id: "seed-3", title: "Crest of the Meticulous Architect", blazon: "Sable, a chevron argent between three towers or", answers: [5, 4, 5, 3, 5, 4, 4, 4, 5, 3, 5, 5, 4, 3, 3, 5, 3, 4, 4, 3, 3, 3, 3, 4, 3, 4, 4, 5, 4, 4, 3, 4, 4, 4, 4, 4, 3, 2, 5, 4] }
+        ];
+
+        function App() {
+            const [currentMode, setCurrentMode] = useState('create'); 
+            const [currentStep, setCurrentStep] = useState('intro'); 
+            const [answers, setAnswers] = useState(Array(40).fill(3)); 
+            const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+            const [loading, setLoading] = useState(false);
+            const [loadingStep, setLoadingStep] = useState('');
+            const [generationResult, setGenerationResult] = useState(null);
+            const [chosenEffect, setChosenEffect] = useState('shiny');
+            const [trainBlazon, setTrainBlazon] = useState('Or, a fess vert between three eagles gules');
+            const [trainTitle, setTrainTitle] = useState('Crest of the Forest Warden');
+            const [libraryData, setLibraryData] = useState(DEFAULT_TRAINING_RECORDS);
+            const [selectedLibraryItem, setSelectedLibraryItem] = useState(null);
+            const [toast, setToast] = useState(null);
+
+            const showToast = (message) => {
+                setToast(message);
+                setTimeout(() => setToast(null), 4000);
+            };
+
+            const handleTrainSubmission = () => {
+                if (!trainBlazon.trim() || !trainTitle.trim()) {
+                    showToast("⚠️ Please provide both a Title and a valid Blazon code.");
+                    return;
+                }
+                const payload = {
+                    id: 'custom-' + Date.now(),
+                    title: trainTitle.trim(),
+                    blazon: trainBlazon.trim(),
+                    answers: answers
+                };
+                setLibraryData(prev => [payload, ...prev]);
+                showToast("📝 Saved locally for current session (Sandbox Mode).");
+                setCurrentMode('library');
+            };
+
+            const generateBlazonFromAnswers = () => {
+                setLoading(true);
+                setLoadingStep("Synthesizing your personality spectrum...");
+                
+                // Simulated AI local forging mechanism for iframe sandboxes
+                setTimeout(() => {
+                    setGenerationResult({
+                        title: "The Unyielding Sovereign",
+                        blazon: "Per pale gules and azure, a lion rampant crowned or",
+                        tinctureExplanation: "Gules (red) for your courage under pressure. Azure (blue) representing your fidelity to truth.",
+                        chargesExplanation: "A lion rampant crowned with gold represents absolute resilience and leadership.",
+                        overallAnalysis: "Your steadfast answers speak of a majestic and sovereign character."
+                    });
+                    setCurrentStep('result');
+                    setLoading(false);
+                }, 1500);
+            };
+
+            const handleCopyBlazon = (blazonText) => {
+                navigator.clipboard.writeText(blazonText);
+                showToast("📋 Blazon syntax copied! Paste it into Drawshield.");
+            };
+
+            const handleQuickAutofill = () => {
+                setAnswers(answers.map(() => Math.floor(Math.random() * 5) + 1));
+                setCurrentQuestionIdx(39);
+                showToast("⚡ Quick-attuned! You are now at the final query.");
+            };
+
+            const getDrawshieldUrl = (blazon, style = 'shiny') => {
+                return `https://drawshield.net/include/drawshield.php?blazon=${encodeURIComponent(blazon.replace(/[#?;%]/g, ''))}&outputformat=png&size=400&effect=${style}`;
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
+                    <div className="h-2 bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600 w-full shadow-lg"></div>
+                    <div className="bg-slate-900 border-b border-slate-800 text-xs text-slate-400 px-4 py-2 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                            <span>Local Sandbox Architecture</span>
+                        </div>
+                        <div className="text-amber-500 font-serif tracking-wider uppercase text-[10px]">
+                            Library: <strong className="text-white">{libraryData.length} Scrolls</strong> Active
+                        </div>
+                    </div>
+
+                    <header className="py-8 px-4 text-center max-w-4xl mx-auto w-full">
+                        <h1 className="text-4xl md:text-5xl font-extrabold font-serif text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-200 to-amber-400">
+                            The Scribe's Armorial
+                        </h1>
+                        <nav className="mt-6 flex justify-center gap-2 max-w-md mx-auto bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                            <button onClick={() => { setCurrentMode('create'); setCurrentStep('intro'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs md:text-sm font-medium ${currentMode === 'create' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'}`}>🛡️ Create</button>
+                            <button onClick={() => { setCurrentMode('train'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs md:text-sm font-medium ${currentMode === 'train' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'}`}>🏰 Train</button>
+                            <button onClick={() => { setCurrentMode('library'); setSelectedLibraryItem(null); }} className={`flex-1 py-2 px-3 rounded-lg text-xs md:text-sm font-medium ${currentMode === 'library' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'}`}>📖 Records</button>
+                        </nav>
+                    </header>
+
+                    <main className="flex-grow max-w-5xl w-full mx-auto px-4 pb-16">
+                        {loading && (
+                            <div className="fixed inset-0 bg-slate-950/90 z-50 flex flex-col items-center justify-center p-6">
+                                <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                <h3 className="text-xl font-serif text-amber-400 animate-pulse">{loadingStep}</h3>
+                            </div>
+                        )}
+
+                        {currentMode === 'create' && (
+                            <div>
+                                {currentStep === 'intro' && (
+                                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl max-w-2xl mx-auto text-center shadow-xl">
+                                        <h2 className="text-2xl font-serif font-bold text-amber-400 mb-4">Forge Your Heraldic Alignment</h2>
+                                        <p className="text-slate-300 text-sm mb-6">Align your psychological profile features directly into modular shield layouts.</p>
+                                        <button onClick={() => setCurrentStep('quiz')} className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold px-8 py-3.5 rounded-xl text-sm">Begin Attunement</button>
+                                    </div>
+                                )}
+
+                                {currentStep === 'quiz' && (
+                                    <div className="bg-slate-900 border border-slate-800 p-6 md:p-10 rounded-2xl max-w-3xl mx-auto shadow-2xl">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <button onClick={handleQuickAutofill} className="text-[10px] bg-slate-800 text-amber-400 px-2 py-1 rounded">⚡ Fast Skip</button>
+                                            <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full">Query {currentQuestionIdx + 1} of 40</span>
+                                        </div>
+                                        <div className="min-h-[120px] bg-slate-950/40 p-6 rounded-xl border border-slate-800/40 mb-8 text-center text-lg font-serif">"{QUESTIONS[currentQuestionIdx]}"</div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-8">
+                                            {[1, 2, 3, 4, 5].map((val) => (
+                                                <button key={val} onClick={() => { const u = [...answers]; u[currentQuestionIdx] = val; setAnswers(u); }} className={`p-4 rounded-xl border font-bold text-center ${answers[currentQuestionIdx] === val ? 'bg-amber-500 text-slate-950' : 'bg-slate-950 border-slate-800'}`}>{val}</button>
+                                            ))}
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <button disabled={currentQuestionIdx === 0} onClick={() => setCurrentQuestionIdx(p => p - 1)} className="px-4 py-2 bg-slate-800 text-xs rounded disabled:opacity-30">← Previous</button>
+                                            {currentQuestionIdx < 39 ? (
+                                                <button onClick={() => setCurrentQuestionIdx(p => p + 1)} className="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded">Next →</button>
+                                            ) : (
+                                                <button onClick={generateBlazonFromAnswers} className="px-6 py-2 bg-emerald-500 text-slate-950 text-xs font-black rounded">⚔️ Forge Shield</button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {currentStep === 'result' && generationResult && (
+                                    <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl max-w-2xl mx-auto text-center space-y-6">
+                                        <h2 className="text-2xl font-serif font-black text-amber-400">{generationResult.title}</h2>
+                                        <div className="flex justify-center">
+                                            <img src={getDrawshieldUrl(generationResult.blazon, chosenEffect)} className="w-64 h-64 bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-inner" />
+                                        </div>
+                                        <p className="text-sm font-mono text-amber-300 bg-slate-950 p-3 rounded border border-slate-800">{generationResult.blazon}</p>
+                                        <div className="flex gap-2 justify-center">
+                                            <button onClick={() => handleCopyBlazon(generationResult.blazon)} className="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-lg">📋 Copy Syntax</button>
+                                            <button onClick={() => { setAnswers(Array(40).fill(3)); setCurrentQuestionIdx(0); setCurrentStep('quiz'); }} className="px-4 py-2 bg-slate-800 text-xs rounded-lg">🔄 Restart</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {currentMode === 'train' && (
+                            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-2xl mx-auto space-y-4">
+                                <h2 className="text-lg font-serif font-bold text-amber-400">Sigils Registry Matrix</h2>
+                                <input type="text" value={trainTitle} onChange={(e) => setTrainTitle(e.target.value)} placeholder="Crest Title" className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs" />
+                                <input type="text" value={trainBlazon} onChange={(e) => setTrainBlazon(e.target.value)} placeholder="Blazon Code" className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs font-mono text-amber-300" />
+                                <button onClick={handleTrainSubmission} className="w-full py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded">Inscribe Pattern</button>
+                            </div>
+                        )}
+
+                        {currentMode === 'library' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
+                                {libraryData.map(item => (
+                                    <div key={item.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center gap-4">
+                                        <img src={getDrawshieldUrl(item.blazon, 'shiny')} className="w-12 h-12 bg-slate-950 rounded p-1 border border-slate-800" />
+                                        <div>
+                                            <h4 className="font-serif font-bold text-xs text-slate-200">{item.title}</h4>
+                                            <p className="text-[10px] font-mono text-slate-500 truncate max-w-[180px]">{item.blazon}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </main>
+
+                    {toast && <div className="fixed bottom-6 right-6 bg-slate-900 border border-amber-500/40 text-slate-200 px-4 py-2 rounded-xl text-xs shadow-2xl">🛡️ {toast}</div>}
+                </div>
+            );
+        }
+
+        const root = Byzantine = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
