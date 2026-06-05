@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orange Wastes Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background-color: #000; }
+        canvas { display: block; }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #f28500;
+            font-size: 24px;
+            pointer-events: none;
+            text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+        }
+        .mc-ui {
+            image-rendering: pixelated;
+            background-color: #c6c6c6;
+            border: 4px solid #3c3c3c;
+            box-shadow: inset -4px -4px 0px #555555, inset 4px 4px 0px #ffffff;
+        }
+        .biome-notif {
+            animation: slideDown 3s ease-out forwards;
+        }
+        @keyframes slideDown {
+            0% { transform: translateY(-100px); opacity: 0; }
+            15% { transform: translateY(0); opacity: 1; }
+            85% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-100px); opacity: 0; }
+        }
+        #fade-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+        #overlay.end-state {
+            z-index: 200;
+            background-color: rgba(20, 10, 10, 0.9);
+        }
+        .storm-shake {
+            animation: shake 0.5s infinite;
+        }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(0px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(2px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(2px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="crosshair">+</div>
+    <div id="fade-overlay"></div>
+
+    <!-- Top Center Weather Warning HUD -->
+    <div id="weather-hud" class="absolute top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none hidden">
+        <div class="mc-ui px-6 py-2 flex flex-col items-center border-red-700 bg-[#df3020]/20 animate-pulse">
+            <span class="text-red-600 font-extrabold text-xs tracking-widest uppercase" id="weather-title">⚠️ WEATHER WARNING: STORM INBOUND ⚠️</span>
+            <span class="text-white text-[10px] font-bold" id="weather-timer">00:00</span>
+        </div>
+    </div>
+
+    <!-- Top Left Timer & Camera HUD -->
+    <div id="timer-hud" class="absolute top-6 left-6 z-20 pointer-events-auto hidden flex flex-col gap-2">
+        <div class="mc-ui px-4 py-2 flex flex-col gap-1">
+            <span class="text-[#373737] font-bold font-mono text-xs">TIME: <span id="timer-val">00:00</span></span>
+            <span class="text-[10px] text-[#373737] font-bold uppercase opacity-85">BIOME: <span id="biome-name" class="text-[#a04000]">Orange Wastes</span></span>
+        </div>
+        <button id="view-toggle" class="mc-ui px-4 py-1.5 text-[10px] font-bold text-[#373737] hover:bg-neutral-300 active:translate-y-[2px] transition-all uppercase cursor-pointer">
+            VIEW: <span id="view-mode-text">1ST PERSON</span> (V)
+        </button>
+    </div>
+
+    <!-- Biome Transition Notification -->
+    <div id="biome-notif-container" class="absolute top-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center"></div>
+
+    <!-- Top Right Information Cluster -->
+    <div class="absolute top-6 right-6 z-20 pointer-events-none flex flex-col items-end gap-3">
+        <!-- Gem HUD -->
+        <div id="hud" class="hidden">
+            <div class="mc-ui px-4 py-2 flex flex-col items-end gap-1">
+                <div class="flex items-center gap-3">
+                    <div id="gem-icon" class="w-3 h-3 bg-[#00ffff] rotate-45 shadow-[0_0_12px_#00ffff] animate-pulse"></div>
+                    <span class="text-[#373737] font-bold text-xs tracking-wider" id="status-text">FIND THE GEM</span>
+                </div>
+                <div id="distance-container" class="text-[10px] text-[#373737] font-mono font-bold bg-black/10 px-2 py-0.5 rounded">
+                    DISTANCE: <span id="dist-value">---</span>m
+                </div>
+            </div>
+        </div>
+
+        <!-- Shard objective HUD -->
+        <div id="shard-hud" class="hidden">
+            <div class="mc-ui px-4 py-2 flex flex-col items-end gap-1 bg-amber-100/90">
+                <div class="flex items-center gap-2">
+                    <div class="w-2.5 h-2.5 bg-yellow-400 rotate-45 animate-bounce"></div>
+                    <span class="text-[#373737] font-bold text-xs uppercase">SHARDS: <span id="shard-count">0/3</span></span>
+                </div>
+                <div class="text-[9px] font-bold text-[#373737] bg-yellow-500/10 px-2 rounded">
+                    SNAIL SPEED DEBUFF: -<span id="speed-debuff-val">0</span>%
+                </div>
+            </div>
+        </div>
+
+        <!-- Active buffs HUD -->
+        <div id="buff-hud" class="hidden flex flex-col gap-1.5 items-end">
+            <div id="buff-speed" class="mc-ui px-3 py-1 bg-cyan-100 text-[#373737] font-bold text-[9px] flex items-center gap-1.5 hidden">
+                🏃 SPEED BOOST (<span id="buff-speed-time">0</span>s)
+            </div>
+            <div id="buff-repellent" class="mc-ui px-3 py-1 bg-pink-100 text-[#373737] font-bold text-[9px] flex items-center gap-1.5 hidden">
+                🛡️ SNAIL REPELLENT (<span id="buff-repellent-time">0</span>s)
+            </div>
+        </div>
+
+        <!-- Snail HUD -->
+        <div id="snail-hud" class="hidden">
+            <div class="mc-ui px-4 py-2 flex flex-col items-end gap-1">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-[#8b4513] rounded-sm shadow-sm"></div>
+                    <span class="text-[#373737] font-bold text-xs">SNAIL ARMY (<span id="snail-count-hud">1</span>)</span>
+                </div>
+                <div class="text-[9px] text-[#373737] font-mono font-bold bg-black/5 px-2 rounded">
+                    BEHAVIOR: <span id="snail-mode" class="text-amber-800">STALKING</span>
+                </div>
+                <div class="text-[9px] text-[#373737] font-mono font-bold bg-black/5 px-2 rounded">
+                    CLOSEST: <span id="snail-dist-val">---</span>m
+                </div>
+                <div id="snail-warning" class="text-[9px] text-red-600 font-bold animate-bounce hidden mt-1">
+                    ⚠️ SNAIL IS CLOSING IN!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions / End Screen Overlay -->
+    <div id="overlay" class="absolute inset-0 bg-black/75 flex justify-center items-center z-50 cursor-pointer text-white">
+        <div class="text-center p-8 max-w-md transition-all duration-500 mc-ui text-neutral-800 mx-4">
+            <h1 id="overlay-title" class="text-4xl font-extrabold mb-4 uppercase tracking-wider text-[#f28500]" style="text-shadow: 2px 2px 0px #3c3c3c;">ORANGE WASTES</h1>
+            <div id="overlay-desc-container" class="mb-4">
+                <p id="overlay-desc" class="text-xs leading-relaxed text-[#373737]">Locate the mystical ancient gems across multiple biomes. Collecting optional **Sub-Crystal Shards** will slow down the tracking snail horde! Watch out for dynamic weather storms!</p>
+            </div>
+            
+            <!-- Difficulty Selection Panel -->
+            <div class="text-[10px] text-left uppercase text-neutral-600 font-bold font-mono tracking-wider mb-2">Select Game Difficulty:</div>
+            <div id="difficulty-select" class="mb-6 flex justify-center gap-3">
+                <button onclick="setDifficulty(1, event)" class="mc-ui px-4 py-2 text-xs font-bold bg-neutral-200 text-neutral-800 hover:bg-neutral-300 transition-all uppercase cursor-pointer">EASY</button>
+                <button onclick="setDifficulty(2, event)" class="mc-ui px-4 py-2 text-xs font-bold bg-[#f28500] text-white hover:bg-[#e07b00] transition-all uppercase cursor-pointer">NORMAL</button>
+                <button onclick="setDifficulty(3, event)" class="mc-ui px-4 py-2 text-xs font-bold bg-neutral-200 text-neutral-800 hover:bg-neutral-300 transition-all uppercase cursor-pointer">HARD</button>
+            </div>
+
+            <div id="controls-list" class="grid grid-cols-2 gap-3 text-xs opacity-90 border-t border-b border-black/15 py-4 mb-6 text-[#373737] font-mono font-bold font-semibold">
+                <div>WASD - Move</div>
+                <div>SPACE - Jump</div>
+                <div>SHIFT - Sprint</div>
+                <div>MOUSE - Look</div>
+                <div class="col-span-2 text-[#f28500]">V - Toggle Camera Perspective</div>
+            </div>
+            <p class="text-xl font-bold animate-pulse text-[#3c3c3c]" id="click-prompt">CLICK TO START ADVENTURE</p>
+        </div>
+    </div>
+
+    <script>
+        // Global Biome Database
+        const BIOMES = [
+            { name: "Orange Wastes", fog: 0xffaa55, sand: 0xdfc08d, foliage: 0x4d7c32, gem: 0x00ffff, type: 'desert', stormName: 'Sandstorm' },
+            { name: "Verdant Mire", fog: 0x2d4c1e, sand: 0x3d5a2d, foliage: 0x1a2e14, gem: 0xff00ff, type: 'forest', stormName: 'Fog Curse' },
+            { name: "Frozen Blue Tundra", fog: 0xd0e8f2, sand: 0xffffff, foliage: 0xadd8e6, gem: 0x3366ff, type: 'snow', stormName: 'Blizzard' },
+            { name: "Crimson Peaks", fog: 0x3a0000, sand: 0x4a0000, foliage: 0x0a0101, gem: 0xffd700, type: 'volcano', stormName: 'Magma Ash' }
+        ];
+
+        // Global Difficulty Parameters & Multipliers
+        let difficulty = 2; // 1=Easy, 2=Normal, 3=Hard
+        const DIFFICULTY_SETTINGS = {
+            1: { // Easy Mode
+                snailSpeedMult: 0.65,
+                snailCountMult: 0.6,
+                gemDistanceMult: 0.75,
+                snailAggression: 0.7,
+                flowUpdateInterval: 12 
+            },
+            2: { // Normal Mode (Standard balance)
+                snailSpeedMult: 1.0,
+                snailCountMult: 1.0,
+                gemDistanceMult: 1.0,
+                snailAggression: 1.0,
+                flowUpdateInterval: 8
+            },
+            3: { // Hard Mode (Hostile tracking environment)
+                snailSpeedMult: 1.35,
+                snailCountMult: 1.5,
+                gemDistanceMult: 1.25,
+                snailAggression: 1.45,
+                flowUpdateInterval: 4 
+            }
+        };
+
+        // Noise function for terrain height and pathfinding
+        function noise(x, z) {
+            return Math.sin(x * 0.1) * Math.cos(z * 0.1) * 2 + 
+                   Math.sin(x * 0.05) * 3 + 
+                   Math.sin(x * 0.02) * Math.cos(z * 0.02) * 8;
+        }
+
+        // Helper function to find valid spawn points on land
+        function findLandSpawn(minDist, maxDist, relativeTo = {x:0, z:0}, preferredDir = null) {
+            let attempts = 0;
+            while (attempts < 1000) {
+                let angle;
+                if (preferredDir) {
+                    const baseAngle = Math.atan2(preferredDir.z, preferredDir.x);
+                    angle = baseAngle + (Math.random() - 0.5) * Math.PI * 0.6; 
+                } else {
+                    angle = Math.random() * Math.PI * 2;
+                }
+                
+                const dist = minDist + Math.random() * (maxDist - minDist);
+                const tx = Math.floor(relativeTo.x + Math.cos(angle) * dist);
+                const tz = Math.floor(relativeTo.z + Math.sin(angle) * dist);
+                if (Math.floor(noise(tx, tz)) >= 0) return { x: tx, z: tz };
+                attempts++;
+            }
+            return { x: relativeTo.x + minDist, z: relativeTo.z + minDist };
+        }
+
+        let GEM_TARGET_POS = findLandSpawn(250, 380);
+
+        let currentBiomeIndex = 0; // Globally defined to resolve the loadChunk ReferenceError
+        let scene, camera, renderer, clock, water;
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false, isSprinting = false;
+        let velocity = new THREE.Vector3();
+        let playerGroup; // Player spatial node
+        let playerMesh;  // Steve visual avatar
+        let playerPrevPos = new THREE.Vector3();
+        let playerYaw = 0;
+        let playerPitch = 0;
+        let viewMode = 'firstPerson'; 
+        let gameWon = false, gameOver = false, gameActive = false;
+        let animationTime = 0;
+        let killerSnail = null;
+        let playerDeathPos = new THREE.Vector3();
+        let startTime = 0, activeSnailStartTime = 0;
+        let gemObject = null;
+        let audioCtx = null;
+        let lastHeartbeatTime = 0;
+
+        // Collectibles & Ruin State
+        let shards = []; // Sub shards to weaken snails
+        let collectibles = []; // Speed potions / Warding incense
+        let shardCount = 0;
+        let collectedShardsCount = 0;
+        const MAX_BIOME_SHARDS = 3;
+        
+        // Active Buff Timers
+        let speedBuffTime = 0;
+        let repellentBuffTime = 0;
+
+        // Weather Storm cycle
+        let stormCycleTimer = 0;
+        let isStormActive = false;
+        const STORM_INTERVAL = 45; // Every 45s a storm triggers
+        const STORM_DURATION = 15; // Storm lasts 15s
+        
+        const CHUNK_SIZE = 16;
+        const RENDER_DISTANCE = 5; 
+        const loadedChunks = new Map();
+        const cactusCache = new Map(); // O(1) Coordinate Key Cache of coordinates to static foliage boundaries
+        const WATER_COLOR = 0x0055aa;
+        const WATER_LEVEL = -0.2;
+
+        // Pathfinding Flow Field Globals
+        let flowField = null;
+        let flowFieldCenterX = 0;
+        let flowFieldCenterZ = 0;
+        const FLOW_GRID_RADIUS = 25; 
+        const FLOW_GRID_SIZE = FLOW_GRID_RADIUS * 2 + 1;
+        let pathfindingFrameCount = 0;
+
+        const FAR_SPEED_FACTOR = 0.17;
+        const CLOSE_SPEED_FACTOR = 0.085;
+        const DANGER_ZONE = 15;
+
+        // Snail Arrays & Configs
+        let snails = [];
+        const PLAYER_BASE_SPEED = 60;
+        const FIXED_SNAIL_FACTORS = [0.035, 0.045, 0.055, 0.065];
+
+        const overlay = document.getElementById('overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const clickPrompt = document.getElementById('click-prompt');
+        const controlsList = document.getElementById('controls-list');
+        const hud = document.getElementById('hud');
+        const timerHud = document.getElementById('timer-hud');
+        const snailHud = document.getElementById('snail-hud');
+        const shardHud = document.getElementById('shard-hud');
+        const buffHud = document.getElementById('buff-hud');
+        const weatherHud = document.getElementById('weather-hud');
+        const weatherTitle = document.getElementById('weather-title');
+        const weatherTimer = document.getElementById('weather-timer');
+        const timerValEl = document.getElementById('timer-val');
+        const biomeNameEl = document.getElementById('biome-name');
+        const distValueEl = document.getElementById('dist-value');
+        const snailWarning = document.getElementById('snail-warning');
+        const snailModeEl = document.getElementById('snail-mode');
+        const snailDistVal = document.getElementById('snail-dist-val');
+        const snailCountVal = document.getElementById('snail-count-hud');
+        const shardCountVal = document.getElementById('shard-count');
+        const speedDebuffVal = document.getElementById('speed-debuff-val');
+        const buffSpeedEl = document.getElementById('buff-speed');
+        const buffSpeedTime = document.getElementById('buff-speed-time');
+        const buffRepellentEl = document.getElementById('buff-repellent');
+        const buffRepellentTime = document.getElementById('buff-repellent-time');
+        const biomeNotifContainer = document.getElementById('biome-notif-container');
+        const fadeOverlay = document.getElementById('fade-overlay');
+        const viewToggleBtn = document.getElementById('view-toggle');
+        const viewModeText = document.getElementById('view-mode-text');
+        const gemIcon = document.getElementById('gem-icon');
+
+        // Geometries
+        const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+        const gemGeo = new THREE.OctahedronGeometry(0.5);
+        const shardGeo = new THREE.OctahedronGeometry(0.35);
+        const potionGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.4, 6);
+
+        // Difficulty Selector Function
+        window.setDifficulty = function(level, event) {
+            if (event) {
+                event.stopPropagation(); // Stop click from triggering lock on background overlay
+            }
+            difficulty = level;
+            
+            // Visual active styles update
+            const buttons = document.querySelectorAll('#difficulty-select button');
+            buttons.forEach((btn, idx) => {
+                if (idx + 1 === level) {
+                    btn.classList.add('bg-[#f28500]', 'text-white');
+                    btn.classList.remove('bg-neutral-200', 'text-neutral-800');
+                } else {
+                    btn.classList.remove('bg-[#f28500]', 'text-white');
+                    btn.classList.add('bg-neutral-200', 'text-neutral-800');
+                }
+            });
+
+            // Adjust starting gem position dynamically based on selection
+            const settings = DIFFICULTY_SETTINGS[difficulty];
+            GEM_TARGET_POS = findLandSpawn(250 * settings.gemDistanceMult, 380 * settings.gemDistanceMult);
+            
+            playSound('jump'); // Satisfying sound feedback on toggle click
+        }
+
+        // Web Audio API Sound Synthesizer
+        function playSound(type) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'jump') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(120, now);
+                    osc.frequency.exponentialRampToValueAtTime(350, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'collect') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                    osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else if (type === 'shard') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.2);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'potion') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.35);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'hurt') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(100, now);
+                    osc.frequency.linearRampToValueAtTime(30, now + 0.7);
+                    
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(250, now);
+                    
+                    osc.disconnect(gain);
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+                    osc.start(now);
+                    osc.stop(now + 0.7);
+                } else if (type === 'heartbeat') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(65, now);
+                    osc.frequency.exponentialRampToValueAtTime(35, now + 0.15);
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'storm') {
+                    // Simulate wind sound
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(45, now);
+                    osc.frequency.linearRampToValueAtTime(55, now + 1.0);
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(110, now);
+                    osc.disconnect(gain);
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 1.0);
+                    osc.start(now);
+                    osc.stop(now + 1.0);
+                }
+            } catch (e) {
+                console.log("AudioContext blocked or failed: ", e);
+            }
+        }
+
+        function createPlayerMesh() {
+            const group = new THREE.Group();
+            
+            // Head (Steve skin tone)
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.85, flatShading: true });
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.48, 0.48), headMat);
+            head.position.y = 1.55;
+            group.add(head);
+
+            // Hair
+            const hairMat = new THREE.MeshStandardMaterial({ color: 0x5a3825, roughness: 0.9, flatShading: true });
+            const hair = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.5), hairMat);
+            hair.position.y = 1.76;
+            group.add(hair);
+
+            // Torso (Cyan shirt)
+            const shirtMat = new THREE.MeshStandardMaterial({ color: 0x00a8a8, roughness: 0.75, flatShading: true });
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.28), shirtMat);
+            torso.position.y = 0.95;
+            group.add(torso);
+
+            // Left Arm Group (Hip Pivot)
+            const leftArmGroup = new THREE.Group();
+            leftArmGroup.position.set(-0.38, 1.25, 0); 
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), shirtMat);
+            leftArm.position.y = -0.3;
+            leftArmGroup.add(leftArm);
+            group.add(leftArmGroup);
+
+            // Right Arm Group (Hip Pivot)
+            const rightArmGroup = new THREE.Group();
+            rightArmGroup.position.set(0.38, 1.25, 0);
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), shirtMat);
+            rightArm.position.y = -0.3;
+            rightArmGroup.add(rightArm);
+            group.add(rightArmGroup);
+
+            // Left Leg Group (Hip Pivot)
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x3f51b5, roughness: 0.75, flatShading: true });
+            const leftLegGroup = new THREE.Group();
+            leftLegGroup.position.set(-0.13, 0.6, 0);
+            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.6, 0.24), legMat);
+            leftLeg.position.y = -0.3;
+            leftLegGroup.add(leftLeg);
+            group.add(leftLegGroup);
+
+            // Right Leg Group (Hip Pivot)
+            const rightLegGroup = new THREE.Group();
+            rightLegGroup.position.set(0.13, 0.6, 0);
+            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.6, 0.24), legMat);
+            rightLeg.position.y = -0.3;
+            rightLegGroup.add(rightLeg);
+            group.add(rightLegGroup);
+
+            return group;
+        }
+
+        // Hostile Snail Instantiation Routine - Fully Hoisted Globally
+        function createSnail(x, z, isFixed = false) {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf5f5dc, roughness: 0.8, flatShading: true });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 1.2), bodyMat);
+            body.position.y = 0.2;
+            group.add(body);
+            
+            const shellColor = isFixed ? 0x553311 : 0x8b4513;
+            const shell = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.8, 0.8), new THREE.MeshStandardMaterial({ color: shellColor, roughness: 0.8, flatShading: true }));
+            shell.position.set(0, 0.8, -0.1);
+            group.add(shell);
+            
+            const stalkGeo = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+            const stalk1 = new THREE.Mesh(stalkGeo, bodyMat);
+            stalk1.position.set(0.2, 0.5, 0.5);
+            group.add(stalk1);
+            
+            const stalk2 = new THREE.Mesh(stalkGeo, bodyMat);
+            stalk2.position.set(-0.2, 0.5, 0.5);
+            group.add(stalk2);
+            
+            group.position.set(x, 5, z);
+            scene.add(group);
+            
+            return { 
+                mesh: group, 
+                isFixed: isFixed,
+                state: isFixed ? "AMBUSHING" : "CHASING",
+                patrolWaypoint: null,
+                stateTimer: Math.random() * 5,
+                restCooldown: 10 + Math.random() * 10,
+                fixedSpeed: 0
+            };
+        }
+
+        // Construct ancient voxel altars / ruin components
+        function createRuinAt(rx, rz, group, biome) {
+            const h = Math.floor(noise(rx, rz));
+            if (h < 0) return; // avoid ruins inside deep water
+
+            const ruinMat = new THREE.MeshStandardMaterial({ 
+                color: biome.type === 'volcano' ? 0x222222 : 0x7a7a7a, 
+                roughness: 0.9, 
+                flatShading: true 
+            });
+
+            // Build Altars / Archways
+            for(let dx = -1; dx <= 1; dx++) {
+                for(let dz = -1; dz <= 1; dz++) {
+                    if (dx === 0 && dz === 0) continue;
+                    const baseBlock = new THREE.Mesh(boxGeo, ruinMat);
+                    baseBlock.position.set(rx + dx, h + 1, rz + dz);
+                    group.add(baseBlock);
+                }
+            }
+
+            // High columns
+            const col1 = new THREE.Mesh(boxGeo, ruinMat);
+            col1.position.set(rx - 1, h + 2, rz - 1);
+            group.add(col1);
+
+            const col2 = new THREE.Mesh(boxGeo, ruinMat);
+            col2.position.set(rx + 1, h + 2, rz + 1);
+            group.add(col2);
+
+            const arch = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 1), ruinMat);
+            arch.position.set(rx, h + 3, rz);
+            group.add(arch);
+
+            // Spawn optional speed / warding pickups on ruins
+            const spawnType = Math.random() > 0.5 ? 'speed' : 'repellent';
+            createCollectible(rx, h + 2, rz, spawnType, group);
+        }
+
+        function createCollectible(x, y, z, type, group) {
+            const groupCol = new THREE.Group();
+            let mesh;
+            
+            if (type === 'speed') {
+                const mat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00aaaa, roughness: 0.1 });
+                mesh = new THREE.Mesh(potionGeo, mat);
+            } else {
+                const mat = new THREE.MeshStandardMaterial({ color: 0xff00bb, emissive: 0xaa0088, roughness: 0.2 });
+                mesh = new THREE.Mesh(potionGeo, mat);
+            }
+            groupCol.add(mesh);
+            groupCol.position.set(x, y, z);
+            group.add(groupCol);
+
+            // Save to track collections
+            collectibles.push({
+                mesh: groupCol,
+                type: type,
+                worldX: x,
+                worldZ: z,
+                worldY: y
+            });
+        }
+
+        function spawnSubCrystal(x, y, z, group, index) {
+            const mat = new THREE.MeshStandardMaterial({
+                color: 0xffdd00,
+                emissive: 0xff9900,
+                emissiveIntensity: 1.2,
+                roughness: 0.2
+            });
+            const mesh = new THREE.Mesh(shardGeo, mat);
+            mesh.position.set(x, y, z);
+            group.add(mesh);
+
+            // Setup localized glow light source
+            const light = new THREE.PointLight(0xffaa00, 1.5, 6);
+            mesh.add(light);
+
+            shards.push({
+                mesh: mesh,
+                worldX: x,
+                worldZ: z,
+                worldY: y,
+                id: index
+            });
+        }
+
+        function createFoliage(x, y, z, group, biome) {
+            const mat = new THREE.MeshStandardMaterial({ color: biome.foliage, roughness: 0.9, flatShading: true });
+            if (biome.type === 'desert') {
+                const height = 2 + Math.floor(Math.random() * 2);
+                for(let i = 0; i < height; i++) {
+                    const seg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1, 0.7), mat);
+                    seg.position.set(x, y + i, z);
+                    group.add(seg);
+                    // Branch details
+                    if (i === 1 && Math.random() > 0.45) {
+                        const sideBranch = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.8), mat);
+                        sideBranch.position.set(x, y + i, z + (Math.random() > 0.5 ? 0.45 : -0.45));
+                        group.add(sideBranch);
+                    }
+                }
+                return height;
+            } else if (biome.type === 'forest') {
+                const h = 4 + Math.floor(Math.random() * 2);
+                const log = new THREE.Mesh(new THREE.BoxGeometry(0.5, h, 0.5), new THREE.MeshStandardMaterial({color: 0x5a3d28, roughness: 0.9, flatShading: true}));
+                log.position.set(x, y + h/2 - 0.5, z);
+                group.add(log);
+                const leaves = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.8, 2.2), mat);
+                leaves.position.set(x, y + h, z);
+                group.add(leaves);
+                return h;
+            } else if (biome.type === 'snow') {
+                const h = 3 + Math.floor(Math.random() * 3);
+                const spike = new THREE.Mesh(new THREE.BoxGeometry(0.4, h, 0.4), new THREE.MeshStandardMaterial({color: 0x3d2b1f, roughness: 0.9, flatShading: true}));
+                spike.position.set(x, y + h/2 - 0.5, z);
+                group.add(spike);
+                // Dual Spruce Tiered foliage
+                const tier1 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 1.8), mat);
+                tier1.position.set(x, y + h - 1, z);
+                group.add(tier1);
+                const tier2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.2), mat);
+                tier2.position.set(x, y + h, z);
+                group.add(tier2);
+                return h;
+            } else {
+                // Volcanic Obelisks / Obsidian Basalt Peaks
+                const h = 4 + Math.floor(Math.random() * 5);
+                const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, 0.8), mat);
+                pillar.position.set(x, y + h/2 - 0.5, z);
+                group.add(pillar);
+                // Pulsing glowing core at the bottom
+                const coreMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff3300, emissiveIntensity: 1.2, flatShading: true });
+                const magma = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.9), coreMat);
+                magma.position.set(x, y + 0.25, z);
+                group.add(magma);
+                return h;
+            }
+        }
+
+        // Optimized Chunk Loader using InstancedMesh
+        function loadChunk(cx, cz) {
+            const key = `${cx},${cz}`;
+            if (loadedChunks.has(key)) return;
+            const biome = BIOMES[currentBiomeIndex];
+            const group = new THREE.Group();
+            const chunkCacti = [];
+            const chunkStartX = cx * CHUNK_SIZE;
+            const chunkStartZ = cz * CHUNK_SIZE;
+
+            const sandMat = new THREE.MeshStandardMaterial({ color: biome.sand, roughness: 0.9, flatShading: true });
+            
+            // Instanced Mesh of Ground Sand Cubes
+            const groundMesh = new THREE.InstancedMesh(boxGeo, sandMat, CHUNK_SIZE * CHUNK_SIZE);
+            const dummy = new THREE.Object3D();
+            let idx = 0;
+
+            for (let x = 0; x < CHUNK_SIZE; x++) {
+                for (let z = 0; z < CHUNK_SIZE; z++) {
+                    const worldX = chunkStartX + x;
+                    const worldZ = chunkStartZ + z;
+                    const h = Math.floor(noise(worldX, worldZ));
+                    
+                    dummy.position.set(worldX, h, worldZ);
+                    dummy.updateMatrix();
+                    groundMesh.setMatrixAt(idx++, dummy.matrix);
+
+                    const seed = Math.sin(worldX * 12.9898 + worldZ * 78.233) * 43758.5453;
+                    const rand = seed - Math.floor(seed);
+                    if (rand > 0.982 && h > 0) {
+                        if (Math.abs(worldX - GEM_TARGET_POS.x) > 2 || Math.abs(worldZ - GEM_TARGET_POS.z) > 2) {
+                            const foliageH = createFoliage(worldX, h + 1, worldZ, group, biome);
+                            const cactusInfo = { 
+                                x: worldX, 
+                                z: worldZ, 
+                                baseY: h + 0.5, 
+                                topY: h + 1.0 + foliageH 
+                            };
+                            chunkCacti.push(cactusInfo);
+                            
+                            // Save directly into O(1) Coordinate Key Cache
+                            cactusCache.set(`${worldX},${worldZ}`, cactusInfo);
+                        }
+                    }
+                }
+            }
+            group.add(groundMesh);
+
+            // Procedurally spawn Sub-Crystals and Ruins inside chunks
+            // Adjusted threshold from >0.6 to >0.672 to reduce ruin structure spawns by 18%
+            const chunkSeed = Math.sin(chunkStartX * 0.05 + chunkStartZ * 0.11);
+            if (chunkSeed > 0.672 && !gameWon) {
+                const rx = chunkStartX + 8;
+                const rz = chunkStartZ + 8;
+                createRuinAt(rx, rz, group, biome);
+            }
+
+            // Spawn optional Sub Crystal shards
+            if (chunkSeed < -0.65 && !gameWon && shards.length < MAX_BIOME_SHARDS) {
+                const cxLoc = chunkStartX + 5;
+                const czLoc = chunkStartZ + 5;
+                const h = Math.floor(noise(cxLoc, czLoc));
+                if (h > 0) {
+                    spawnSubCrystal(cxLoc, h + 1.8, czLoc, group, shards.length);
+                }
+            }
+
+            if (!gameWon && GEM_TARGET_POS.x >= chunkStartX && GEM_TARGET_POS.x < chunkStartX + CHUNK_SIZE && GEM_TARGET_POS.z >= chunkStartZ && GEM_TARGET_POS.z < chunkStartZ + CHUNK_SIZE) {
+                const gemH = Math.floor(noise(GEM_TARGET_POS.x, GEM_TARGET_POS.z));
+                createGem(GEM_TARGET_POS.x, gemH + 2.5, GEM_TARGET_POS.z, group, biome);
+            }
+            
+            group.userData.cacti = chunkCacti;
+            scene.add(group);
+            loadedChunks.set(key, group);
+        }
+
+        function createGem(x, y, z, group, biome) {
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: biome.gem, 
+                emissive: biome.gem, 
+                emissiveIntensity: 1.5,
+                roughness: 0.1,
+                metalness: 0.9
+            });
+            gemObject = new THREE.Mesh(gemGeo, mat);
+            gemObject.position.set(x, y, z);
+            group.add(gemObject);
+
+            // Light up the surroundings of the gem
+            const light = new THREE.PointLight(biome.gem, 3, 10);
+            gemObject.add(light);
+            
+            gemIcon.style.backgroundColor = '#' + biome.gem.toString(16).padStart(6, '0');
+            gemIcon.style.boxShadow = `0 0 15px #${biome.gem.toString(16).padStart(6, '0')}`;
+        }
+
+        function notifyBiome(name) {
+            const notif = document.createElement('div');
+            notif.className = "biome-notif mc-ui px-6 py-3 text-center text-sm font-bold text-[#373737] mb-2";
+            notif.innerHTML = `NEW BIOME UNLOCKED: <span style="color: #f28500;">${name.toUpperCase()}</span>`;
+            biomeNotifContainer.appendChild(notif);
+            setTimeout(() => {
+                notif.remove();
+            }, 3000);
+        }
+
+        function updateTimer() {
+            if (gameOver || gameWon) return;
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const secs = String(elapsed % 60).padStart(2, '0');
+            timerValEl.innerText = `${mins}:${secs}`;
+        }
+
+        // Player pickups collisions (Shards / Potions)
+        function checkCollections() {
+            const px = playerGroup.position.x;
+            const pz = playerGroup.position.z;
+            const py = playerGroup.position.y;
+
+            // Check Shards
+            for(let i = shards.length - 1; i >= 0; i--) {
+                const s = shards[i];
+                const dx = px - s.worldX;
+                const dz = pz - s.worldZ;
+                const dy = py - s.worldY;
+                const distSq = dx*dx + dz*dz + dy*dy;
+                
+                if (distSq < 3.2) {
+                    // Remove from parent scene
+                    if (s.mesh.parent) s.mesh.parent.remove(s.mesh);
+                    shards.splice(i, 1);
+                    collectedShardsCount++;
+                    shardCountVal.innerText = `${collectedShardsCount}/3`;
+                    
+                    const percentDebuff = collectedShardsCount * 15;
+                    speedDebuffVal.innerText = percentDebuff;
+                    
+                    playSound('shard');
+                }
+            }
+
+            // Check Potions
+            for(let i = collectibles.length - 1; i >= 0; i--) {
+                const c = collectibles[i];
+                const dx = px - c.worldX;
+                const dz = pz - c.worldZ;
+                const dy = py - c.worldY;
+                const distSq = dx*dx + dz*dz + dy*dy;
+                
+                if (distSq < 3.2) {
+                    if (c.mesh.parent) c.mesh.parent.remove(c.mesh);
+                    collectibles.splice(i, 1);
+                    playSound('potion');
+
+                    if (c.type === 'speed') {
+                        speedBuffTime = 10.0; // 10s of speed elixir
+                    } else if (c.type === 'repellent') {
+                        repellentBuffTime = 8.0; // 8s of snail banishing repellent
+                    }
+                }
+            }
+        }
+
+        function triggerWin() {
+            gameWon = true;
+            document.exitPointerLock();
+            playSound('collect');
+            
+            overlay.style.display = 'flex';
+            overlay.classList.add('end-state');
+            overlayTitle.innerText = "VICTORY!";
+            overlayTitle.style.color = "#00ffff";
+            
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const secs = String(elapsed % 60).padStart(2, '0');
+            
+            overlayDesc.innerHTML = `You completed the trail across the Crimson Peaks!<br><br>Completion Time: <span class="text-[#f28500] font-bold">${mins}:${secs}</span><br>Snail Army Evaded: <span class="text-amber-800 font-bold">${snails.length} Hunters</span>`;
+            clickPrompt.innerText = "PRESS R TO RESTART SYSTEM";
+            controlsList.classList.add('hidden');
+        }
+
+        function triggerLose(snail) {
+            gameOver = true;
+            killerSnail = snail;
+            playerDeathPos.copy(playerGroup.position);
+            animationTime = 0;
+            document.exitPointerLock();
+            playSound('hurt');
+
+            // Apply cinematic damage red overlay
+            fadeOverlay.style.backgroundColor = 'rgba(150, 0, 0, 0.7)';
+            fadeOverlay.style.opacity = '1';
+
+            setTimeout(() => {
+                overlay.style.display = 'flex';
+                overlay.classList.add('end-state');
+                overlayTitle.innerText = "YOU WERE ELIMINATED";
+                overlayTitle.style.color = "#df2020";
+                
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                const secs = String(elapsed % 60).padStart(2, '0');
+                
+                overlayDesc.innerHTML = `The Snail Horde ambushed and caught you!<br><br>Time Survived: <span class="text-amber-600 font-bold">${mins}:${secs}</span><br>Biomes Conquered: <span class="text-sky-600 font-bold">${currentBiomeIndex} / ${BIOMES.length}</span>`;
+                clickPrompt.innerText = "PRESS R TO RESTART GAME";
+                controlsList.classList.add('hidden');
+            }, 1500);
+        }
+
+        function restartGame() {
+            currentBiomeIndex = 0;
+            gameWon = false;
+            gameOver = false;
+            gameActive = false;
+            animationTime = 0;
+            killerSnail = null;
+            velocity.set(0, 0, 0);
+
+            snails.forEach(s => scene.remove(s.mesh));
+            snails = [];
+            shards = [];
+            collectibles = [];
+            collectedShardsCount = 0;
+            shardCountVal.innerText = "0/3";
+            speedDebuffVal.innerText = "0";
+
+            playerGroup.position.set(0, 10, 0);
+            playerPrevPos.copy(playerGroup.position);
+            playerYaw = 0;
+            playerPitch = 0;
+
+            const settings = DIFFICULTY_SETTINGS[difficulty];
+            GEM_TARGET_POS = findLandSpawn(250 * settings.gemDistanceMult, 380 * settings.gemDistanceMult);
+
+            for(const group of loadedChunks.values()) {
+                scene.remove(group);
+            }
+            loadedChunks.clear();
+            cactusCache.clear(); // Wipe the coordinate lookup map
+            updateChunks();
+
+            const startSnail = createSnail(-25, -25, false);
+            snails.push(startSnail);
+            snailCountVal.innerText = snails.length;
+
+            overlayTitle.innerText = BIOMES[0].name;
+            overlayTitle.style.color = "#f28500";
+            overlayDesc.innerHTML = "Locate the mystical ancient gems across multiple biomes. Collecting optional **Sub-Crystal Shards** will slow down the tracking snail horde! Watch out for dynamic weather storms!";
+            clickPrompt.innerText = "CLICK TO START ADVENTURE";
+            controlsList.classList.remove('hidden');
+            overlay.classList.remove('end-state');
+            fadeOverlay.style.opacity = '0';
+            
+            hud.classList.add('hidden');
+            timerHud.classList.add('hidden');
+            snailHud.classList.add('hidden');
+            shardHud.classList.add('hidden');
+            buffHud.classList.add('hidden');
+            weatherHud.classList.add('hidden');
+
+            const startBiome = BIOMES[0];
+            biomeNameEl.innerText = startBiome.name;
+            scene.background.set(startBiome.fog);
+            scene.fog.color.set(startBiome.fog);
+
+            updateFlowField();
+        }
+
+        function updateChunks() {
+            const playerCX = Math.floor(playerGroup.position.x / CHUNK_SIZE);
+            const playerCZ = Math.floor(playerGroup.position.z / CHUNK_SIZE);
+            for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
+                for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
+                    loadChunk(playerCX + x, playerCZ + z);
+                }
+            }
+            for (const [key, group] of loadedChunks.entries()) {
+                const [cx, cz] = key.split(',').map(Number);
+                if (Math.abs(cx - playerCX) > RENDER_DISTANCE + 1 || Math.abs(cz - playerCZ) > RENDER_DISTANCE + 1) {
+                    scene.remove(group);
+                    
+                    // Cleanup cache map entries for unloaded coordinate clusters
+                    if (group.userData.cacti) {
+                        for (const c of group.userData.cacti) {
+                            cactusCache.delete(`${c.x},${c.z}`);
+                        }
+                    }
+                    loadedChunks.delete(key);
+                }
+            }
+            if (water) { water.position.x = playerGroup.position.x; water.position.z = playerGroup.position.z; }
+        }
+
+        // Bounded O(1) floor height sampler using coordinate cache
+        function getFloorHeight(px, pz) {
+            const sandH = Math.floor(noise(px, pz)) + 2.1;
+            let cactusH = -Infinity;
+            const checkRadius = 0.75;
+            
+            // Query only local integer grid bounding blocks instead of 9 chunk lists
+            const minX = Math.floor(px - checkRadius);
+            const maxX = Math.ceil(px + checkRadius);
+            const minZ = Math.floor(pz - checkRadius);
+            const maxZ = Math.ceil(pz + checkRadius);
+            
+            for (let x = minX; x <= maxX; x++) {
+                for (let z = minZ; z <= maxZ; z++) {
+                    const c = cactusCache.get(`${x},${z}`);
+                    if (c) {
+                        const dx = px - c.x;
+                        const dz = pz - c.z;
+                        if (dx*dx + dz*dz < checkRadius * checkRadius) {
+                            cactusH = c.topY;
+                        }
+                    }
+                }
+            }
+            return Math.max(sandH, cactusH);
+        }
+
+        // Fast local Cylinder vs Cylinder collision test using Coordinate Map
+        function checkCactusCollision(px, py, pz) {
+            const playerRadius = 0.4; 
+            const cactusRadius = 0.35;
+            const minDist = playerRadius + cactusRadius;
+            const playerMinY = py;
+            const playerMaxY = py + 1.8;
+            
+            // Subdivide bounds to check adjacent coordinate hash keys
+            const minX = Math.floor(px - minDist);
+            const maxX = Math.ceil(px + minDist);
+            const minZ = Math.floor(pz - minDist);
+            const maxZ = Math.ceil(pz + minDist);
+            
+            for (let x = minX; x <= maxX; x++) {
+                for (let z = minZ; z <= maxZ; z++) {
+                    const c = cactusCache.get(`${x},${z}`);
+                    if (c) {
+                        const dx = px - c.x;
+                        const dz = pz - c.z;
+                        if (dx*dx + dz*dz < minDist * minDist) {
+                            // Perfect vertical overlap intersection
+                            const overlap = Math.max(playerMinY, c.baseY) < Math.min(playerMaxY, c.topY);
+                            if (overlap) return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function toggleViewMode() {
+            if (viewMode === 'firstPerson') {
+                viewMode = 'thirdPerson';
+                viewModeText.innerText = "3RD PERSON";
+            } else {
+                viewMode = 'firstPerson';
+                viewModeText.innerText = "1ST PERSON";
+            }
+        }
+
+        function checkGemCollection() {
+            if (gameWon || gameOver || !gemObject) return;
+            const dx = playerGroup.position.x - GEM_TARGET_POS.x;
+            const dz = playerGroup.position.z - GEM_TARGET_POS.z;
+            if (dx*dx + dz*dz < 2.5) {
+                if (gemObject.parent) gemObject.parent.remove(gemObject);
+                gemObject = null;
+                playSound('collect');
+                
+                if (currentBiomeIndex === BIOMES.length - 1) {
+                    triggerWin();
+                    return;
+                }
+
+                const playerVelocity = new THREE.Vector3().subVectors(playerGroup.position, playerPrevPos).multiplyScalar(60);
+                const trajectory = playerVelocity.length() > 0.1 ? playerVelocity.normalize() : new THREE.Vector3(1,0,0);
+
+                const settings = DIFFICULTY_SETTINGS[difficulty];
+
+                const activeSnail = snails.find(s => !s.isFixed);
+                if (activeSnail) {
+                    activeSnail.isFixed = true;
+                    activeSnail.mesh.children[1].material = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8, flatShading: true });
+                }
+
+                snails.forEach(s => {
+                    if (s.isFixed) {
+                        const ambushPoint = findLandSpawn(130 * settings.gemDistanceMult, 220 * settings.gemDistanceMult, playerGroup.position, trajectory);
+                        s.mesh.position.set(ambushPoint.x, 5, ambushPoint.z);
+                        s.state = "AMBUSHING";
+                        s.stateTimer = 0;
+                    }
+                });
+
+                // Spawn next tracking active hunter with strict count caps scaled by settings
+                const maxSnailsAllowed = Math.max(1, Math.floor((currentBiomeIndex + 2) * settings.snailCountMult));
+                if (snails.length < maxSnailsAllowed) {
+                    const spawnPos = findLandSpawn(70 * settings.gemDistanceMult, 100 * settings.gemDistanceMult, playerGroup.position);
+                    const newSnail = createSnail(spawnPos.x, spawnPos.z, false);
+                    snails.push(newSnail);
+                }
+                
+                activeSnailStartTime = Date.now();
+                snailCountVal.innerText = snails.length;
+
+                // Clear shards & pickups of old biome
+                shards = [];
+                collectibles = [];
+                collectedShardsCount = 0;
+                shardCountVal.innerText = "0/3";
+                speedDebuffVal.innerText = "0";
+
+                currentBiomeIndex = (currentBiomeIndex + 1) % BIOMES.length;
+                const nextBiome = BIOMES[currentBiomeIndex];
+                GEM_TARGET_POS = findLandSpawn(350 * settings.gemDistanceMult, 480 * settings.gemDistanceMult, playerGroup.position, trajectory);
+
+                biomeNameEl.innerText = nextBiome.name;
+                notifyBiome(nextBiome.name);
+            }
+        }
+
+        function updateDistanceHUD() {
+            if (gameWon || gameOver) return;
+            const dx = playerGroup.position.x - GEM_TARGET_POS.x;
+            const dz = playerGroup.position.z - GEM_TARGET_POS.z;
+            distValueEl.innerText = Math.floor(Math.sqrt(dx*dx + dz*dz));
+        }
+
+        function updateFlowField() {
+            if (gameWon || gameOver) return;
+
+            const playerVelocity = new THREE.Vector3().subVectors(playerGroup.position, playerPrevPos).multiplyScalar(60);
+            const trajectory = playerVelocity.length() > 0.1 ? playerVelocity.normalize() : new THREE.Vector3(0, 0, 0);
+            
+            const leadTime = 1.5;
+            const targetX = Math.round(playerGroup.position.x + trajectory.x * playerVelocity.length() * leadTime);
+            const targetZ = Math.round(playerGroup.position.z + trajectory.z * playerVelocity.length() * leadTime);
+            
+            flowFieldCenterX = targetX;
+            flowFieldCenterZ = targetZ;
+            
+            const distGrid = Array(FLOW_GRID_SIZE).fill().map(() => Array(FLOW_GRID_SIZE).fill(Infinity));
+            const startX = FLOW_GRID_RADIUS;
+            const startZ = FLOW_GRID_RADIUS;
+            distGrid[startX][startZ] = 0;
+            
+            const queue = [{x: startX, z: startZ, dist: 0}];
+            
+            // Ultra-optimized O(1) cache check replacing loops inside the inner Dijkstra solver
+            function isCactusAt(worldX, worldZ) {
+                return cactusCache.has(`${worldX},${worldZ}`);
+            }
+            
+            const settings = DIFFICULTY_SETTINGS[difficulty];
+            const terrainPenaltyMult = 1 / settings.snailAggression; // High aggression means less penalty from vertical block steps
+            
+            while (queue.length > 0) {
+                let minIdx = 0;
+                for (let i = 1; i < queue.length; i++) {
+                    if (queue[i].dist < queue[minIdx].dist) minIdx = i;
+                }
+                const curr = queue.splice(minIdx, 1)[0];
+                if (curr.dist > distGrid[curr.x][curr.z]) continue;
+                
+                const neighbors = [
+                    {dx: 1, dz: 0}, {dx: -1, dz: 0}, {dx: 0, dz: 1}, {dx: 0, dz: -1},
+                    {dx: 1, dz: 1}, {dx: -1, dz: 1}, {dx: 1, dz: -1}, {dx: -1, dz: -1}
+                ];
+                
+                for (const n of neighbors) {
+                    const nx = curr.x + n.dx;
+                    const nz = curr.z + n.dz;
+                    
+                    if (nx >= 0 && nx < FLOW_GRID_SIZE && nz >= 0 && nz < FLOW_GRID_SIZE) {
+                        const worldX = flowFieldCenterX - FLOW_GRID_RADIUS + nx;
+                        const worldZ = flowFieldCenterZ - FLOW_GRID_RADIUS + nz;
+                        
+                        let penalty = 0;
+                        const h = noise(worldX, worldZ);
+                        
+                        if (h < WATER_LEVEL) {
+                            penalty += 8.0 * terrainPenaltyMult; 
+                        }
+                        if (isCactusAt(worldX, worldZ)) {
+                            penalty += 150.0;
+                        }
+                        
+                        const currWorldX = flowFieldCenterX - FLOW_GRID_RADIUS + curr.x;
+                        const currWorldZ = flowFieldCenterZ - FLOW_GRID_RADIUS + curr.z;
+                        const currH = noise(currWorldX, currWorldZ);
+                        if (Math.abs(h - currH) > 1.2) {
+                            penalty += 50.0 * terrainPenaltyMult;
+                        }
+                        
+                        const stepDist = (n.dx !== 0 && n.dz !== 0) ? 1.414 : 1.0;
+                        const nextDist = curr.dist + stepDist + penalty;
+                        
+                        if (nextDist < distGrid[nx][nz]) {
+                            distGrid[nx][nz] = nextDist;
+                            queue.push({x: nx, z: nz, dist: nextDist});
+                        }
+                    }
+                }
+            }
+            
+            flowField = distGrid;
+        }
+
+        function getPathfindingDirection(sx, sz, snailObj) {
+            if (!flowField) return { x: 0, z: 0 };
+            
+            const gridX = Math.round(sx - flowFieldCenterX + FLOW_GRID_RADIUS);
+            const gridZ = Math.round(sz - flowFieldCenterZ + FLOW_GRID_RADIUS);
+            
+            if (gridX < 1 || gridX >= FLOW_GRID_SIZE - 1 || gridZ < 1 || gridZ >= FLOW_GRID_SIZE - 1) {
+                const targetX = flowFieldCenterX;
+                const targetZ = flowFieldCenterZ;
+                const dx = targetX - sx;
+                const dz = targetZ - sz;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                if (dist === 0) return { x: 0, z: 0 };
+                return { x: dx / dist, z: dz / dist };
+            }
+            
+            const neighbors = [
+                {x: 1, z: 0}, {x: -1, z: 0}, {x: 0, z: 1}, {x: 0, z: -1},
+                {x: 1, z: 1}, {x: -1, z: 1}, {x: 1, z: -1}, {x: -1, z: -1}
+            ];
+            
+            let bestNeighbor = null;
+            let minCost = Infinity;
+            
+            for (const n of neighbors) {
+                const nx = gridX + n.x;
+                const nz = gridZ + n.z;
+                const cost = flowField[nx][nz];
+                if (cost < minCost) {
+                    minCost = cost;
+                    bestNeighbor = n;
+                }
+            }
+            
+            if (bestNeighbor) {
+                const len = Math.sqrt(bestNeighbor.x * bestNeighbor.x + bestNeighbor.z * bestNeighbor.z);
+                return { x: bestNeighbor.x / len, z: bestNeighbor.z / len };
+            }
+            return { x: 0, z: 0 };
+        }
+
+        function updateSnailBehavior(s, dist, delta) {
+            s.stateTimer += delta;
+            
+            if (s.isFixed) {
+                if (s.state === "AMBUSHING") {
+                    if (dist < 35) {
+                        s.state = "CHASING"; 
+                        s.stateTimer = 0;
+                    }
+                } else if (s.state === "CHASING") {
+                    if (dist > 55) {
+                        s.state = "AMBUSHING"; 
+                        s.stateTimer = 0;
+                    }
+                }
+            } else {
+                if (s.state === "CHASING") {
+                    s.restCooldown -= delta;
+                    if (s.restCooldown <= 0) {
+                        s.state = "RESTING";
+                        s.stateTimer = 0;
+                        s.restCooldown = 12 + Math.random() * 8;
+                    } else if (dist > 120) {
+                        s.state = "PATROLLING";
+                        s.stateTimer = 0;
+                        s.patrolWaypoint = null;
+                    }
+                } else if (s.state === "RESTING") {
+                    if (s.stateTimer > 1.5) {
+                        s.state = "CHASING";
+                        s.stateTimer = 0;
+                    }
+                } else if (s.state === "PATROLLING") {
+                    if (dist < 100) {
+                        s.state = "CHASING";
+                        s.stateTimer = 0;
+                    }
+                }
+            }
+        }
+
+        function getRubberBandFactor(s, dist) {
+            if (s.isFixed) {
+                const retiredSnails = snails.filter(item => item.isFixed);
+                const retiredIndex = retiredSnails.indexOf(s);
+                const baseFactor = FIXED_SNAIL_FACTORS[Math.min(retiredIndex >= 0 ? retiredIndex : 0, FIXED_SNAIL_FACTORS.length - 1)];
+                return dist < DANGER_ZONE ? baseFactor * 0.6 : baseFactor;
+            }
+            
+            if (dist >= DANGER_ZONE) {
+                return FAR_SPEED_FACTOR; 
+            } else {
+                const ratio = dist / DANGER_ZONE; 
+                return CLOSE_SPEED_FACTOR + (FAR_SPEED_FACTOR - CLOSE_SPEED_FACTOR) * ratio; 
+            }
+        }
+
+        function updateSnails(delta) {
+            if (gameOver || gameWon) return;
+            
+            let minSnailDist = Infinity;
+            let activeSnailState = "STALKING";
+            const settings = DIFFICULTY_SETTINGS[difficulty];
+
+            // Shard collection speed reduction (0% to 45% debuff)
+            const speedDebuffMultiplier = 1.0 - (collectedShardsCount * 0.15);
+
+            snails.forEach(s => {
+                const dx = playerGroup.position.x - s.mesh.position.x;
+                const dz = playerGroup.position.z - s.mesh.position.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                if (dist < minSnailDist) minSnailDist = dist;
+
+                if (dist < 1.1) { triggerLose(s); return; }
+
+                updateSnailBehavior(s, dist, delta);
+
+                let currentSpeed = 0;
+                if (s.state === "CHASING") {
+                    const factor = getRubberBandFactor(s, dist);
+                    currentSpeed = factor * PLAYER_BASE_SPEED * settings.snailSpeedMult * speedDebuffMultiplier;
+                    if (!s.isFixed) {
+                        activeSnailState = dist > DANGER_ZONE ? "STALKING" : "AMBUSH ZONE";
+                    }
+                } else if (s.state === "PATROLLING") {
+                    currentSpeed = 0.035 * PLAYER_BASE_SPEED * settings.snailSpeedMult * speedDebuffMultiplier; 
+                    if (!s.isFixed) activeSnailState = "SEARCHING";
+                } else if (s.state === "RESTING") {
+                    currentSpeed = 0;
+                    if (!s.isFixed) activeSnailState = "RESTING";
+                } else if (s.state === "AMBUSHING") {
+                    currentSpeed = 0;
+                    if (!s.isFixed) activeSnailState = "LURKING";
+                }
+
+                // Snail Repellent Effect active
+                if (repellentBuffTime > 0) {
+                    currentSpeed *= -0.75; // force them to move backward/scared!
+                    activeSnailState = "⚠️ PANICKED";
+                }
+
+                const sHeight = noise(s.mesh.position.x, s.mesh.position.z);
+                const inWater = sHeight < WATER_LEVEL;
+                const speedMult = inWater ? 0.45 : 1.0;
+                currentSpeed *= speedMult;
+
+                if (Math.abs(currentSpeed) > 0) {
+                    let moveDir = { x: 0, z: 0 };
+                    
+                    if (s.state === "PATROLLING") {
+                        if (!s.patrolWaypoint || s.mesh.position.distanceTo(s.patrolWaypoint) < 2) {
+                            const wp = findLandSpawn(20, 50, s.mesh.position);
+                            s.patrolWaypoint = new THREE.Vector3(wp.x, s.mesh.position.y, wp.z);
+                        }
+                        const toWp = new THREE.Vector3().subVectors(s.patrolWaypoint, s.mesh.position);
+                        toWp.y = 0;
+                        if (toWp.length() > 0.1) {
+                            toWp.normalize();
+                            moveDir = { x: toWp.x, z: toWp.z };
+                        }
+                    } else {
+                        moveDir = getPathfindingDirection(s.mesh.position.x, s.mesh.position.z, s);
+                        if (repellentBuffTime > 0) {
+                            // Reverse the movement direction
+                            moveDir.x = -moveDir.x;
+                            moveDir.z = -moveDir.z;
+                        }
+                    }
+
+                    if (moveDir.x !== 0 || moveDir.z !== 0) {
+                        const moveAmt = currentSpeed * delta;
+                        s.mesh.position.x += moveDir.x * moveAmt;
+                        s.mesh.position.z += moveDir.z * moveAmt;
+                        s.mesh.lookAt(s.mesh.position.x + moveDir.x, s.mesh.position.y, s.mesh.position.z + moveDir.z);
+                    }
+                }
+
+                // Smoothly adjust snail heights relative to terrain mesh with lerp clamping
+                const sFloor = getFloorHeight(s.mesh.position.x, s.mesh.position.z) - 1.7;
+                s.mesh.position.y = THREE.MathUtils.lerp(s.mesh.position.y, sFloor, 0.15);
+
+                // Crawling visual wiggly feedback
+                if (Math.abs(currentSpeed) > 0) {
+                    const wiggle = Math.sin(Date.now() * 0.012 + s.stateTimer) * 0.14;
+                    s.mesh.children[0].scale.z = 1.0 + Math.sin(Date.now() * 0.015) * 0.06; 
+                    s.mesh.children[2].rotation.x = wiggle; 
+                    s.mesh.children[3].rotation.x = -wiggle; 
+                }
+            });
+
+            snailDistVal.innerText = Math.floor(minSnailDist);
+            snailModeEl.innerText = activeSnailState;
+            snailWarning.classList.toggle('hidden', minSnailDist > 25);
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            const startBiome = BIOMES[0];
+            scene.background = new THREE.Color(startBiome.fog);
+            scene.fog = new THREE.Fog(startBiome.fog, 18, 75);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.rotation.order = 'YXZ';
+            
+            renderer = new THREE.WebGLRenderer({ antialias: false });
+            renderer.setSize(window.innerWidth, window.innerHeight); 
+            renderer.setPixelRatio(window.devicePixelRatio ? Math.min(window.devicePixelRatio, 1.5) : 1);
+            document.body.appendChild(renderer.domElement);
+            
+            clock = new THREE.Clock(); 
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            
+            const sunLight = new THREE.DirectionalLight(0xfff8ee, 0.85); 
+            sunLight.position.set(50, 100, 50); 
+            scene.add(sunLight);
+            
+            const waterGeo = new THREE.PlaneGeometry(350, 350);
+            const waterMat = new THREE.MeshStandardMaterial({ 
+                color: WATER_COLOR, 
+                transparent: true, 
+                opacity: 0.65,
+                roughness: 0.2,
+                metalness: 0.1
+            });
+            water = new THREE.Mesh(waterGeo, waterMat); 
+            water.rotation.x = -Math.PI / 2; 
+            water.position.y = WATER_LEVEL; 
+            scene.add(water);
+            
+            playerGroup = new THREE.Group();
+            playerGroup.position.set(0, 10, 0);
+            scene.add(playerGroup);
+
+            playerMesh = createPlayerMesh();
+            playerGroup.add(playerMesh);
+
+            const startSnail = createSnail(-25, -25, false); 
+            snails.push(startSnail);
+            
+            playerPrevPos.copy(playerGroup.position);
+
+            updateChunks();
+            updateFlowField(); 
+
+            document.addEventListener('keydown', onKeyDown); 
+            document.addEventListener('keyup', onKeyUp);
+            
+            viewToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                toggleViewMode();
+                if (!audioCtx) playSound('jump');
+            });
+
+            overlay.addEventListener('click', () => {
+                if (gameOver || gameWon) return;
+                
+                // Initialize Web Audio API on first tap
+                if (!audioCtx) {
+                    playSound('jump');
+                }
+
+                document.body.requestPointerLock();
+                hud.classList.remove('hidden'); 
+                timerHud.classList.remove('hidden'); 
+                snailHud.classList.remove('hidden');
+                shardHud.classList.remove('hidden');
+                buffHud.classList.remove('hidden');
+                if (!gameActive) { 
+                    gameActive = true; 
+                    startTime = Date.now(); 
+                    activeSnailStartTime = Date.now(); 
+                }
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                if (gameOver || gameWon) return;
+                if (document.pointerLockElement !== document.body) {
+                    overlay.style.display = 'flex';
+                } else {
+                    overlay.style.display = 'none';
+                }
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (document.pointerLockElement === document.body && !gameOver && !gameWon) {
+                    playerYaw -= e.movementX * 0.0022;
+                    const newPitch = playerPitch - e.movementY * 0.0022;
+                    playerPitch = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, newPitch));
+                }
+            });
+
+            animate();
+        }
+
+        function onKeyDown(e) {
+            switch (e.code) {
+                case 'KeyW': moveForward = true; break; 
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyA': moveLeft = true; break; 
+                case 'KeyD': moveRight = true; break;
+                case 'KeyV': toggleViewMode(); break; 
+                case 'KeyR':
+                    if (gameOver || gameWon) {
+                        restartGame();
+                    }
+                    break;
+                case 'Space': 
+                    if (canJump && gameActive && !gameOver && !gameWon) { 
+                        const inWater = (playerGroup.position.y - 1.6) < WATER_LEVEL; 
+                        velocity.y += inWater ? 8 : 12; 
+                        canJump = false; 
+                        playSound('jump');
+                    } 
+                    break;
+                case 'ShiftLeft': isSprinting = true; break;
+            }
+        }
+
+        function onKeyUp(e) {
+            switch (e.code) {
+                case 'KeyW': moveForward = false; break; 
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyA': moveLeft = false; break; 
+                case 'KeyD': moveRight = false; break;
+                case 'ShiftLeft': isSprinting = false; break;
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+            const biome = BIOMES[currentBiomeIndex];
+            const settings = DIFFICULTY_SETTINGS[difficulty];
+            
+            if (gemObject) { 
+                gemObject.rotation.y += 0.04; 
+                gemObject.position.y += Math.sin(Date.now() * 0.0025) * 0.004; 
+            }
+
+            // Spin shards/collectibles
+            shards.forEach(s => { s.mesh.rotation.y += 0.03; });
+            collectibles.forEach(c => { c.mesh.rotation.y += 0.02; });
+
+            if (gameOver) {
+                animationTime += delta;
+                const snailPos = killerSnail.mesh.position;
+                const camTarget = new THREE.Vector3().copy(playerDeathPos).add(new THREE.Vector3(4, 3, 4));
+                camera.position.lerp(camTarget, 0.04);
+                camera.lookAt(snailPos);
+                if (animationTime > 1.1) {
+                    killerSnail.mesh.position.lerp(camera.position, 0.08);
+                    killerSnail.mesh.scale.addScalar(0.04);
+                }
+            } else if (gameWon) {
+                animationTime += delta;
+                camera.position.y += delta * 6;
+                camera.position.x += Math.cos(animationTime * 1.5) * 0.25;
+                camera.position.z += Math.sin(animationTime * 1.5) * 0.25;
+                camera.rotation.y += delta * 1.5;
+                camera.rotation.x -= delta * 0.45;
+            } else if (document.pointerLockElement === document.body && gameActive) {
+                
+                // --- STORM WEATHER CYCLE SYSTEM ---
+                stormCycleTimer += delta;
+                if (!isStormActive) {
+                    if (stormCycleTimer >= STORM_INTERVAL) {
+                        isStormActive = true;
+                        stormCycleTimer = 0;
+                        document.body.classList.add('storm-shake');
+                        weatherHud.classList.remove('hidden');
+                        weatherTitle.innerText = `⚠️ ${biome.stormName.toUpperCase()} ACTIVE ⚠️`;
+                    }
+                } else {
+                    weatherTimer.innerText = String(Math.ceil(STORM_DURATION - stormCycleTimer)).padStart(2, '0') + "s";
+                    if (Math.random() > 0.8) playSound('storm');
+
+                    if (stormCycleTimer >= STORM_DURATION) {
+                        isStormActive = false;
+                        stormCycleTimer = 0;
+                        document.body.classList.remove('storm-shake');
+                        weatherHud.classList.add('hidden');
+                    }
+                }
+
+                // --- ACTIVE BUFF DECAY & HUD UPDATES ---
+                if (speedBuffTime > 0) {
+                    speedBuffTime -= delta;
+                    buffSpeedEl.classList.remove('hidden');
+                    buffSpeedTime.innerText = Math.ceil(speedBuffTime);
+                    if (speedBuffTime <= 0) buffSpeedEl.classList.add('hidden');
+                }
+                if (repellentBuffTime > 0) {
+                    repellentBuffTime -= delta;
+                    buffRepellentEl.classList.remove('hidden');
+                    buffRepellentTime.innerText = Math.ceil(repellentBuffTime);
+                    if (repellentBuffTime <= 0) buffRepellentEl.classList.add('hidden');
+                }
+
+                // Change Fog on Storm Cycle
+                const isUnderwater = camera.position.y <= WATER_LEVEL;
+                if (isUnderwater) { 
+                    scene.background.set(0x002244); 
+                    scene.fog.color.set(0x002244); 
+                    scene.fog.near = 1; 
+                    scene.fog.far = 12; 
+                } else { 
+                    let targetFogColor = biome.fog;
+                    let targetFogFar = 75;
+                    
+                    if (isStormActive) {
+                        targetFogFar = 16; // Dramatic reduction of visibility during a storm
+                        if (biome.type === 'desert') targetFogColor = 0xc68d40;
+                        else if (biome.type === 'forest') targetFogColor = 0x0a1505;
+                        else if (biome.type === 'snow') targetFogColor = 0xeeeeee;
+                        else if (biome.type === 'volcano') targetFogColor = 0x110000;
+                    }
+
+                    scene.background.lerp(new THREE.Color(targetFogColor), 0.05); 
+                    scene.fog.color.lerp(new THREE.Color(targetFogColor), 0.05); 
+                    scene.fog.near = 18; 
+                    scene.fog.far = THREE.MathUtils.lerp(scene.fog.far, targetFogFar, 0.05); 
+                }
+                
+                const friction = isUnderwater ? 14.0 : 9.5; 
+                const gravity = isUnderwater ? 4.5 : 9.8 * 3.2; 
+                const speedMult = isUnderwater ? 0.38 : 1.0;
+                
+                velocity.x -= velocity.x * friction * delta; 
+                velocity.z -= velocity.z * friction * delta; 
+                velocity.y -= gravity * delta; 
+                
+                const localDir = new THREE.Vector3();
+                if (moveForward) localDir.z -= 1; 
+                if (moveBackward) localDir.z += 1;
+                if (moveLeft) localDir.x -= 1; 
+                if (moveRight) localDir.x += 1;
+                localDir.normalize();
+                
+                // Speed Elixir scale (boosts player speeds by 1.6x)
+                const speedBuffMult = speedBuffTime > 0 ? 1.6 : 1.0;
+                const baseSpeed = (isSprinting ? 120.0 : 60.0) * speedBuffMult;
+                const worldDir = localDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerYaw);
+                
+                velocity.x += worldDir.x * baseSpeed * speedMult * delta;
+                velocity.z += worldDir.z * baseSpeed * speedMult * delta;
+                
+                playerPrevPos.copy(playerGroup.position);
+                const oldPos = playerGroup.position.clone();
+                const currentFloor = getFloorHeight(playerGroup.position.x, playerGroup.position.z);
+                
+                // Axis-isolated block collision checks with dynamic step-up logic (clears up to 1-block differences)
+                const STEP_HEIGHT = 1.05;
+                
+                // Try moving along X
+                playerGroup.position.x += velocity.x * delta;
+                let floorX = getFloorHeight(playerGroup.position.x, playerGroup.position.z);
+                let collisionX = (floorX > playerGroup.position.y + 0.1) || checkCactusCollision(playerGroup.position.x, playerGroup.position.y, playerGroup.position.z);
+                
+                if (collisionX) {
+                    let steppedUp = false;
+                    let heightDiff = floorX - playerGroup.position.y;
+                    if (heightDiff <= STEP_HEIGHT) {
+                        // Test stepping up vertically
+                        let testY = floorX;
+                        if (!checkCactusCollision(playerGroup.position.x, testY, playerGroup.position.z)) {
+                            playerGroup.position.y = testY;
+                            steppedUp = true;
+                        }
+                    }
+                    if (!steppedUp) {
+                        playerGroup.position.x = oldPos.x;
+                        velocity.x = 0;
+                    }
+                }
+                
+                // Try moving along Z
+                playerGroup.position.z += velocity.z * delta;
+                let floorZ = getFloorHeight(playerGroup.position.x, playerGroup.position.z);
+                let collisionZ = (floorZ > playerGroup.position.y + 0.1) || checkCactusCollision(playerGroup.position.x, playerGroup.position.y, playerGroup.position.z);
+                
+                if (collisionZ) {
+                    let steppedUp = false;
+                    let heightDiff = floorZ - playerGroup.position.y;
+                    if (heightDiff <= STEP_HEIGHT) {
+                        // Test stepping up vertically
+                        let testY = floorZ;
+                        if (!checkCactusCollision(playerGroup.position.x, testY, playerGroup.position.z)) {
+                            playerGroup.position.y = testY;
+                            steppedUp = true;
+                        }
+                    }
+                    if (!steppedUp) {
+                        playerGroup.position.z = oldPos.z;
+                        velocity.z = 0;
+                    }
+                }
+                
+                playerGroup.position.y += velocity.y * delta;
+                const floorHeight = getFloorHeight(playerGroup.position.x, playerGroup.position.z);
+                if (playerGroup.position.y < floorHeight) { 
+                    velocity.y = 0; 
+                    playerGroup.position.y = floorHeight; 
+                    canJump = true; 
+                }
+                
+                // Camera / Avatar movement swaying & bobbing logic
+                const isMoving = moveForward || moveBackward || moveLeft || moveRight;
+                if (isMoving && !isUnderwater) {
+                    playerGroup.position.y += Math.sin(Date.now() * 0.015) * 0.045;
+                    
+                    const swingSpeed = isSprinting ? 0.022 : 0.014;
+                    const swing = Math.sin(Date.now() * swingSpeed) * 0.75;
+                    playerMesh.children[3].rotation.x = -swing; // Left Arm
+                    playerMesh.children[4].rotation.x = swing;  // Right Arm
+                    playerMesh.children[5].rotation.x = swing;  // Left Leg
+                    playerMesh.children[6].rotation.x = -swing; // Right Leg
+                } else {
+                    playerMesh.children[3].rotation.x = 0;
+                    playerMesh.children[4].rotation.x = 0;
+                    playerMesh.children[5].rotation.x = 0;
+                    playerMesh.children[6].rotation.x = 0;
+                }
+                
+                playerMesh.rotation.y = playerYaw;
+
+                // Perspective camera offsets with collision adjustment to prevent clipping
+                if (viewMode === 'firstPerson') {
+                    playerMesh.visible = false;
+                    camera.position.copy(playerGroup.position).add(new THREE.Vector3(0, 1.6, 0));
+                    camera.rotation.set(playerPitch, playerYaw, 0, 'YXZ');
+                } else {
+                    playerMesh.visible = true;
+                    const offset = new THREE.Vector3(0, 0, 4.5); 
+                    offset.applyEuler(new THREE.Euler(playerPitch, playerYaw, 0));
+                    
+                    const eyePos = playerGroup.position.clone().add(new THREE.Vector3(0, 1.6, 0));
+                    const idealCamPos = playerGroup.position.clone().add(new THREE.Vector3(0, 1.8, 0)).add(offset);
+                    
+                    // Raycast check: subdivide the path from eyePos to idealCamPos to detect floor/foliage clipping
+                    let actualCamPos = idealCamPos.clone();
+                    const steps = 8;
+                    for (let i = 1; i <= steps; i++) {
+                        const t = i / steps;
+                        const testPos = new THREE.Vector3().lerpVectors(eyePos, idealCamPos, t);
+                        
+                        // Check terrain collision at testPos
+                        const floorAtTest = getFloorHeight(testPos.x, testPos.z);
+                        if (testPos.y < floorAtTest + 0.3) {
+                            actualCamPos.copy(testPos);
+                            actualCamPos.y = Math.max(actualCamPos.y, floorAtTest + 0.3);
+                            break;
+                        }
+                        
+                        // Check cactus/foliage collision
+                        if (checkCactusCollision(testPos.x, testPos.y - 0.5, testPos.z)) {
+                            actualCamPos.copy(testPos);
+                            break;
+                        }
+                    }
+                    
+                    camera.position.copy(actualCamPos);
+                    camera.lookAt(playerGroup.position.clone().add(new THREE.Vector3(0, 1.2, 0)));
+                }
+
+                // Dynamic heartbeat monitor pulses faster as the snails get closer
+                const closestSnailDist = parseFloat(snailDistVal.innerText);
+                if (!isNaN(closestSnailDist) && closestSnailDist < 25) {
+                    const now = Date.now();
+                    const pulseRate = Math.max(180, closestSnailDist * 35); 
+                    if (now - lastHeartbeatTime > pulseRate) {
+                        playSound('heartbeat');
+                        lastHeartbeatTime = now;
+                    }
+                }
+
+                pathfindingFrameCount++;
+                if (pathfindingFrameCount % settings.flowUpdateInterval === 0) {
+                    updateFlowField();
+                }
+
+                checkCollections();
+                updateSnails(delta); 
+                updateTimer(); 
+                checkGemCollection(); 
+                updateDistanceHUD(); 
+                updateChunks();
+            }
+
+            if (water) {
+                // Realistic water surface waves bobbing
+                water.position.y = WATER_LEVEL + Math.sin(Date.now() * 0.0012) * 0.04;
+            }
+
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => { 
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight; 
+                camera.updateProjectionMatrix(); 
+                renderer.setSize(window.innerWidth, window.innerHeight); 
+            }
+        });
+        window.onload = init;
+    </script>
+</body>
+</html>
